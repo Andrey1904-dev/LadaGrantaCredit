@@ -55,7 +55,7 @@ export default function DashboardPage() {
   const [newMileage, setNewMileage] = useState('')
   const [mileageError, setMileageError] = useState('')
   const [finish, setFinish] = useState<GrantaFinish>(() => getSavedFinish())
-  const [photoMode, setPhotoMode] = useState<'studio' | 'bridge'>('studio')
+  const [photoMode, setPhotoMode] = useState<'garage' | 'road'>('garage')
 
   useEffect(() => {
     const onFinish = () => setFinish(getSavedFinish())
@@ -164,12 +164,18 @@ export default function DashboardPage() {
     { category: 'other', label: 'Прочее', sub: 'Мойка, парковка', Icon: DotsIcon },
   ]
 
-  const studioAsset = finish === 'white' ? GRANTA_ASSETS.white : GRANTA_ASSETS.black
+  const garageAsset = finish === 'white' ? GRANTA_ASSETS.garageWhite : GRANTA_ASSETS.garageBlack
+  const sceneAsset = photoMode === 'garage' ? garageAsset : GRANTA_ASSETS.road
+  const sceneCaption = photoMode === 'garage' ? 'Гараж · домашний бокс' : 'Трасса · утро'
 
   return (
     <div className="animate-pop-in flex flex-col gap-5">
       {/* 1. ГЛАВНЫЙ ВИЗУАЛЬНЫЙ АКЦЕНТ: АВТОМОБИЛЬ, НОМЕР И ОДОМЕТР */}
-      <section aria-label="Мой автомобиль" className="overflow-hidden rounded-[12px] border border-[#363B43] bg-[#1A1D22]">
+      <section
+        aria-label="Мой автомобиль"
+        className="animate-rise overflow-hidden rounded-[12px] border border-[#363B43] bg-[#1A1D22]"
+        style={{ animationDelay: '40ms' }}
+      >
         {/* Верхняя панель статуса авто */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#363B43]/80 bg-[#23272D]/70 px-4 py-2.5">
           <div className="flex items-center gap-2">
@@ -192,13 +198,13 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Переключатель ракурса: Студия (черная/белая) или Мост (Hero) */}
+          {/* Переключатель сцены: домашний гараж (чёрный/белый кузов) или трасса */}
           <div className="flex items-center gap-1 rounded-[8px] border border-[#363B43] bg-[#0E1013] p-0.5 text-[11px] font-semibold">
             <button
               type="button"
-              onClick={() => setPhotoMode('studio')}
+              onClick={() => setPhotoMode('garage')}
               className={`rounded-[6px] px-2.5 py-1 transition-colors ${
-                photoMode === 'studio'
+                photoMode === 'garage'
                   ? 'bg-[#23272D] text-[#F3F4F4]'
                   : 'text-[#A9AFB7] hover:text-[#F3F4F4]'
               }`}
@@ -207,9 +213,9 @@ export default function DashboardPage() {
             </button>
             <button
               type="button"
-              onClick={() => setPhotoMode('bridge')}
+              onClick={() => setPhotoMode('road')}
               className={`rounded-[6px] px-2.5 py-1 transition-colors ${
-                photoMode === 'bridge'
+                photoMode === 'road'
                   ? 'bg-[#23272D] text-[#F3F4F4]'
                   : 'text-[#A9AFB7] hover:text-[#F3F4F4]'
               }`}
@@ -219,40 +225,26 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Визуальная сцена автомобиля (контрастный графитовый подиум, без обрезки бампера и колёс) */}
-        <div className="relative overflow-hidden bg-gradient-to-b from-[#23272D] via-[#1A1D22] to-[#0E1013]">
-          {photoMode === 'studio' ? (
-            <div className="relative mx-auto flex h-48 w-full max-w-[640px] items-center justify-center px-4 py-2 sm:h-56">
-              {/* Мягкий технический радиальный контраст под чёрную/белую машину */}
-              <div
-                className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(54,59,67,0.45)_0%,rgba(14,16,19,0)_70%)]"
-                aria-hidden="true"
-              />
-              <img
-                src={studioAsset.src}
-                data-webp-src={studioAsset.webp}
-                alt={studioAsset.alt}
-                fetchPriority="high"
-                decoding="async"
-                className="relative z-10 max-h-full w-full object-contain object-center"
-              />
-            </div>
-          ) : (
-            <div className="relative aspect-[16/9] w-full max-h-64 overflow-hidden bg-[#0E1013]">
-              <img
-                src={GRANTA_ASSETS.road.src}
-                data-webp-src={GRANTA_ASSETS.road.webp}
-                alt={GRANTA_ASSETS.road.alt}
-                fetchPriority="high"
-                decoding="async"
-                className="h-full w-full object-cover object-center"
-              />
-              <div
-                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1A1D22] via-[#0E1013]/25 to-transparent"
-                aria-hidden="true"
-              />
-            </div>
-          )}
+        {/* Полноформатная сцена автомобиля на всю ширину карточки: машина целиком,
+            без белых полей и «игрушечного» подиума; кроссфейд при смене сцены/цвета */}
+        <div className="relative h-56 w-full overflow-hidden bg-[#0E1013] sm:h-80">
+          <img
+            key={`${photoMode}-${finish}`}
+            src={sceneAsset.src}
+            data-webp-src={sceneAsset.webp}
+            alt={sceneAsset.alt}
+            fetchPriority="high"
+            decoding="async"
+            className="animate-car-in h-full w-full object-cover object-center"
+          />
+          {/* Мягкое затемнение снизу, чтобы сцена вливалась в карточку */}
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0E1013]/85 via-transparent to-[#0E1013]/25"
+            aria-hidden="true"
+          />
+          <span className="absolute right-3 top-3 rounded-[6px] border border-[#363B43] bg-[#0E1013]/80 px-2 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-[#A9AFB7] backdrop-blur-sm">
+            {sceneCaption}
+          </span>
         </div>
 
         {/* Нижняя телеметрия автомобиля: госномер, одометр и кнопка обновления */}
@@ -302,7 +294,11 @@ export default function DashboardPage() {
       </section>
 
       {/* 2. КОНТРОЛЬ СОСТОЯНИЯ: ближайшее ТО, расход топлива, напоминания */}
-      <section aria-label="Сервис и контроль" className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+      <section
+        aria-label="Сервис и контроль"
+        className="animate-rise grid grid-cols-1 gap-2.5 sm:grid-cols-3"
+        style={{ animationDelay: '130ms' }}
+      >
         <Link to="/service" className="group">
           <Card className="flex h-full flex-col justify-between border-[#363B43] transition-colors group-hover:border-[#E33337]/70">
             <div className="flex items-start justify-between gap-2">
@@ -409,10 +405,16 @@ export default function DashboardPage() {
 
 
       {/* Календарь владельца: платежи и документы, у которых скоро срок */}
-      <UpcomingEvents />
+      <div className="animate-rise" style={{ animationDelay: '220ms' }}>
+        <UpcomingEvents />
+      </div>
 
       {/* 3. БЫСТРЫЕ ДЕЙСТВИЯ РАСХОДОВ (чёткая инструментальная панель без разноцветных кругов) */}
-      <section aria-label="Быстрое добавление расхода">
+      <section
+        aria-label="Быстрое добавление расхода"
+        className="animate-rise"
+        style={{ animationDelay: '310ms' }}
+      >
         <SectionTitle
           action={
             <button
@@ -454,7 +456,10 @@ export default function DashboardPage() {
       </section>
 
       {/* 4. КЛЮЧЕВЫЕ СЦЕНАРИИ: КРЕДИТ И СВОДКА ТРАТ МЕСЯЦА */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div
+        className="animate-rise grid grid-cols-1 gap-4 md:grid-cols-2"
+        style={{ animationDelay: '400ms' }}
+      >
         {/* Следующий платёж по автокредиту */}
         <section aria-label="Автокредит" className="flex flex-col">
           <SectionTitle
@@ -681,12 +686,16 @@ function OnboardingCar() {
 
   return (
     <Card className="p-0 overflow-hidden">
-      <div className="relative aspect-[16/9] max-h-52 w-full overflow-hidden bg-[#0E1013]">
+      <div className="relative aspect-[16/9] max-h-64 w-full overflow-hidden bg-[#0E1013]">
         <img
-          src={GRANTA_ASSETS.black.src}
-          data-webp-src={GRANTA_ASSETS.black.webp}
-          alt={GRANTA_ASSETS.black.alt}
-          className="h-full w-full object-contain object-center p-3"
+          src={GRANTA_ASSETS.garageBlack.src}
+          data-webp-src={GRANTA_ASSETS.garageBlack.webp}
+          alt={GRANTA_ASSETS.garageBlack.alt}
+          className="animate-car-in h-full w-full object-cover object-center"
+        />
+        <div
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1A1D22]/80 via-transparent to-transparent"
+          aria-hidden="true"
         />
       </div>
       <div className="border-t border-[#363B43] p-5">

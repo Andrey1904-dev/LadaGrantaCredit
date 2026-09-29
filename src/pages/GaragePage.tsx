@@ -105,12 +105,12 @@ export default function GaragePage() {
     )
   }
 
-  const carAsset = finish === 'white' ? GRANTA_ASSETS.white : GRANTA_ASSETS.black
+  const carAsset = finish === 'white' ? GRANTA_ASSETS.garageWhite : GRANTA_ASSETS.garageBlack
   const drivenKm = Math.max(0, car.current_mileage - (car.initial_mileage || 0))
 
   return (
     <div className="animate-pop-in">
-      <div className="mb-4">
+      <div className="animate-rise mb-4" style={{ animationDelay: '40ms' }}>
         <PageHero
           media={PAGE_MEDIA.garage}
           eyebrow="Паспорт автомобиля"
@@ -140,15 +140,17 @@ export default function GaragePage() {
       </div>
 
       {/* 1. Напоминание об ОСАГО (если истекает или истёк — сразу наверху, не перекрывается фото) */}
-      <InsuranceCard
-        insuranceUntil={car.insurance_until}
-        onSave={async (date) => {
-          await saveCar({ insurance_until: date })
-        }}
-      />
+      <div className="animate-rise" style={{ animationDelay: '130ms' }}>
+        <InsuranceCard
+          insuranceUntil={car.insurance_until}
+          onSave={async (date) => {
+            await saveCar({ insurance_until: date })
+          }}
+        />
+      </div>
 
-      {/* 2. Паспорт автомобиля и студийный рендер (черный / белый вариант) */}
-      <Card className="mt-4 p-0 overflow-hidden">
+      {/* 2. Паспорт автомобиля и полноформатный кадр исполнения (черный / белый вариант) */}
+      <Card className="animate-rise mt-4 p-0 overflow-hidden" style={{ animationDelay: '220ms' }}>
         {/* Верхняя панель выбора цвета кузова (явно отмечено как визуальное демо) */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#363B43] bg-[#23272D]/75 px-4 py-2.5">
           <div className="flex items-center gap-2">
@@ -196,19 +198,24 @@ export default function GaragePage() {
           </div>
         </div>
 
-        {/* Контрастный графитовый подиум: сохраняем прозрачность и пропорции (object-fit: contain) */}
-        <div className="relative flex h-52 w-full items-center justify-center overflow-hidden bg-gradient-to-b from-[#2A2F37] via-[#1E2229] to-[#1A1D22] px-4 py-3 sm:h-60">
-          <div
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(227,51,55,0.10)_0%,rgba(14,16,19,0)_70%)]"
-            aria-hidden="true"
-          />
+        {/* Полноформатный кадр выбранного исполнения на всю ширину:
+            машина целиком в родном гараже, кроссфейд при смене цвета */}
+        <div className="relative h-56 w-full overflow-hidden bg-[#0E1013] sm:h-80">
           <img
+            key={finish}
             src={carAsset.src}
             data-webp-src={carAsset.webp}
             alt={carAsset.alt}
             loading="lazy"
-            className="relative z-10 max-h-full w-full object-contain object-center"
+            className="animate-car-in h-full w-full object-cover object-center"
           />
+          <div
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1A1D22]/75 via-transparent to-[#0E1013]/20"
+            aria-hidden="true"
+          />
+          <span className="absolute right-3 top-3 rounded-[6px] border border-[#363B43] bg-[#0E1013]/80 px-2 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-[#A9AFB7] backdrop-blur-sm">
+            {finish === 'white' ? 'Белый кузов' : 'Чёрный кузов'}
+          </span>
         </div>
 
         {/* Технические данные паспорта авто */}

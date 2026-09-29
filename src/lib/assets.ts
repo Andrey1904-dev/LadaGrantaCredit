@@ -11,6 +11,11 @@
  *   ТО       → подъёмник в сервисе     (granta-sport-service)
  *   Гараж    → частный гараж           (granta-sport-garage)
  *
+ * Полноформатные кадры «машина в гараже» на всю ширину карточки —
+ * чёрное и белое исполнение (granta-sport-garage-black / -white)
+ * заменили ранние студийные вырезки (black/white), которые выглядели
+ * маленькой машинкой на подиуме.
+ *
  * У каждого кадра есть WebP-версия (`npm run images`), которая
  * подставляется автоматически через `data-webp-src`.
  */
@@ -74,6 +79,18 @@ export const GRANTA_ASSETS = {
     'granta-sport-garage',
     'jpg',
     'LADA Granta Sport в частном гараже под тёплой лампой, рядом комплект шин',
+  ),
+  /** Главная + Гараж: чёрная Granta Sport в гараже, полный кадр на всю ширину */
+  garageBlack: asset(
+    'granta-sport-garage-black',
+    'jpg',
+    'Чёрная LADA Granta Sport в тёмном гараже с красной LED-подсветкой, ракурс 3/4 спереди',
+  ),
+  /** Главная + Гараж: белая Granta Sport в гараже, полный кадр на всю ширину */
+  garageWhite: asset(
+    'granta-sport-garage-white',
+    'jpg',
+    'Белая LADA Granta Sport в тёмном гараже с красной LED-подсветкой, ракурс 3/4 спереди',
   ),
 } as const
 
