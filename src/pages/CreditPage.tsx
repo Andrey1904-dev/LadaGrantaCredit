@@ -3,6 +3,7 @@ import { SegmentedControl } from '../components/ui'
 import PageHero, { HeroChip } from '../components/PageHero'
 import MySchedule from '../components/credit/MySchedule'
 import Modeling from '../components/credit/Modeling'
+import Prepayment from '../components/credit/Prepayment'
 import { useAppData } from '../context/AppDataContext'
 import { PAGE_MEDIA } from '../lib/assets'
 import { CalendarIcon, CardIcon, PercentIcon } from '../components/icons'
@@ -12,7 +13,7 @@ import { remainingBalance } from '../utils/loan'
 
 /** Вкладка 2: Кредит — «Мой график» (БД) и «Моделирование» (локальные расчёты и ПДН) */
 export default function CreditPage() {
-  const [tab, setTab] = useState<'schedule' | 'modeling'>('schedule')
+  const [tab, setTab] = useState<'schedule' | 'prepay' | 'modeling'>('schedule')
   const { loan, transactions } = useAppData()
 
   const stats = useMemo(() => {
@@ -31,7 +32,7 @@ export default function CreditPage() {
         media={PAGE_MEDIA.credit}
         eyebrow="Автокредит"
         title="Управление автокредитом"
-        subtitle="Аннуитетный график с остатком долга, отметкой платежей и калькулятором показателя долговой нагрузки."
+        subtitle="Аннуитетный график с остатком долга, расчётом досрочного погашения и калькулятором долговой нагрузки."
         priority
         chips={
           stats && loan ? (
@@ -69,11 +70,16 @@ export default function CreditPage() {
         onChange={setTab}
         options={[
           { value: 'schedule', label: 'Мой график' },
-          { value: 'modeling', label: 'Моделирование и ПДН' },
+          { value: 'prepay', label: 'Досрочно' },
+          { value: 'modeling', label: 'Подбор и ПДН' },
         ]}
       />
 
-      <div>{tab === 'schedule' ? <MySchedule /> : <Modeling />}</div>
+      <div>
+        {tab === 'schedule' && <MySchedule />}
+        {tab === 'prepay' && <Prepayment />}
+        {tab === 'modeling' && <Modeling />}
+      </div>
     </div>
   )
 }

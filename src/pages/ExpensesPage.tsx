@@ -1,21 +1,34 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAppData } from '../context/AppDataContext'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import DonutChart from '../components/DonutChart'
+import MonthlyChart from '../components/MonthlyChart'
 import { Button, Card, EmptyState, SectionTitle, Spinner } from '../components/ui'
 import PageHero, { HeroChip } from '../components/PageHero'
-import { EditIcon, FuelIcon, PlusIcon, TrashIcon, WalletIcon } from '../components/icons'
+import {
+  ChartIcon,
+  ChevronRightIcon,
+  EditIcon,
+  FuelIcon,
+  PlusIcon,
+  TrashIcon,
+  WalletIcon,
+} from '../components/icons'
 import { CATEGORY_META } from '../lib/categories'
 import { PAGE_MEDIA } from '../lib/assets'
 import { useSettings } from '../lib/settings'
 import { TX_CATEGORIES, type Transaction, type TxCategory } from '../types/domain'
 import { startOfMonth } from '../utils/date'
-import { computeFuelStats } from '../utils/fuel'
+import { computeFuelStats, monthlyMileage } from '../utils/fuel'
 import { fmtDate, fmtMileage, fmtMoney, fmtNumber } from '../utils/format'
+import { TCO_BENCHMARK, forecastYear, monthlySeries, ownershipCost } from '../utils/stats'
+import { buildServicePlan, engineInfo } from '../lib/service'
+import { taxRateFor, transportTax } from '../lib/tax'
 
 /** Вкладка 3: Расходы — аналитика стоимости владения, Donut-диаграмма и лента операций */
 export default function ExpensesPage() {
-  const { transactions, car, loading, removeTransaction } = useAppData()
+  const { transactions, car, loan, maintenance, loading, removeTransaction } = useAppData()
   const [settings] = useSettings()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
@@ -51,6 +64,56 @@ export default function ExpensesPage() {
     () => computeFuelStats(transactions, settings.fuelPrice, settings.tankLiters),
     [transactions, settings.fuelPrice, settings.tankLiters],
   )
+
+  /* Расходы по месяцам и стоимость владения за последние 12 месяцев */
+  const months = useMemo(() => monthlySeries(transactions, 12), [transactions])
+  const cost = useMemo(() => ownershipCost(transactions, 12), [transactions])
+  const kmPerMonth = useMemo(() => monthlyMileage(transactions), [transactions])
+
+  /* Прогноз на год вперёд: кредит + топливо + подходящие работы ТО + ОСАГО + налог */
+  const forecast = useMemo(() => {
+    const kmPerYear = Math.round((kmPerMonth ?? 1_000) * 12)
+    const engine = engineInfo(settings.engine)
+    const rate = settings.taxRateOverride ?? taxRateFor(settings.taxRegion, engine.power)
+    const tax = transportTax(engine.power, rate)
+
+    const plan = car
+      ? buildServicePlan({
+          mileage: car.current_mileage,
+          mode: settings.planMode,
+          engine: settings.engine,
+          maintenance,
+          purchaseDate: settings.purchaseDate,
+        })
+      : []
+    const service = plan
+      .filter(
+        (s) =>
+          (s.remainingKm !== null && s.remainingKm <= kmPerYear) ||
+          (s.remainingDays !== null && s.remainingDays <= 365),
+      )
+      .reduce((sum, s) => sum + (s.item.cost[0] + s.item.cost[1]) / 2, 0)
+
+    const yearAgo = new Date()
+    yearAgo.setFullYear(yearAgo.getFullYear() - 1)
+    const insuranceFact = transactions
+      .filter((t) => t.category === 'insurance' && new Date(t.date) >= yearAgo)
+      .reduce((sum, t) => sum + t.amount, 0)
+
+    const paidCount = transactions.filter((t) => t.category === 'loan').length
+    const loanMonthsLeft = loan ? Math.max(0, loan.term_months - paidCount) : 0
+
+    return forecastYear({
+      loanPayment: loan?.monthly_payment ?? 0,
+      loanMonthsLeft,
+      kmPerYear,
+      per100: fuel.avgPer100,
+      fuelPrice: settings.fuelPrice,
+      service,
+      insurance: insuranceFact > 0 ? insuranceFact : 7_100, // ориентир ОСАГО для Гранты
+      tax,
+    })
+  }, [car, fuel.avgPer100, kmPerMonth, loan, maintenance, settings, transactions])
 
   const filteredTransactions = useMemo(() => {
     if (filterCat === 'all') return transactions
@@ -187,6 +250,96 @@ export default function ExpensesPage() {
               />
             </Card>
           )}
+
+          {/* Динамика расходов по месяцам */}
+          <SectionTitle
+            action={
+              <span className="text-[11.5px] text-[#A9AFB7]">за последние 12 месяцев</span>
+            }
+          >
+            Расходы по месяцам
+          </SectionTitle>
+          <Card className="flex flex-col gap-3">
+            <MonthlyChart points={months} />
+            <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+              {stats.chart.map((c) => (
+                <span key={c.category} className="inline-flex items-center gap-1.5 text-[11.5px] text-[#A9AFB7]">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: c.meta.color }}
+                    aria-hidden="true"
+                  />
+                  {c.meta.label}
+                </span>
+              ))}
+            </div>
+          </Card>
+
+          {/* Стоимость владения и прогноз на год */}
+          <SectionTitle
+            action={
+              <Link
+                to="/service"
+                className="inline-flex items-center gap-0.5 text-[11.5px] font-semibold text-[#E33337]"
+              >
+                План ТО
+                <ChevronRightIcon className="h-3.5 w-3.5" />
+              </Link>
+            }
+          >
+            Стоимость владения
+          </SectionTitle>
+          <Card className="flex flex-col gap-3.5">
+            <div className="grid grid-cols-3 gap-3">
+              <FuelStat
+                label="В месяц"
+                value={fmtMoney(cost.perMonth)}
+                sub={`по ${Math.round(cost.windowMonths)} мес. учёта`}
+                accent
+              />
+              <FuelStat
+                label="Рубль за километр"
+                value={cost.perKm ? `${cost.perKm.toFixed(1).replace('.', ',')} ₽` : '—'}
+                sub={cost.kmInWindow ? `на ${fmtMileage(cost.kmInWindow)}` : 'нужен пробег в чеках'}
+              />
+              <FuelStat
+                label="Прогноз на год"
+                value={fmtMoney(forecast.total)}
+                sub={`≈ ${fmtMoney(forecast.perMonth)}/мес`}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 border-t border-[#363B43] pt-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A9AFB7]">
+                Из чего сложится год вперёд
+              </p>
+              <ForecastRow label="Платежи по кредиту" value={forecast.loan} total={forecast.total} color="#E33337" />
+              <ForecastRow label={`Топливо (${fmtMileage(forecast.kmPerYear)} в год)`} value={forecast.fuel} total={forecast.total} color="#F5A623" />
+              <ForecastRow label="ТО и расходники по регламенту" value={forecast.service} total={forecast.total} color="#38BDF8" />
+              <ForecastRow label="ОСАГО" value={forecast.insurance} total={forecast.total} color="#16B374" />
+              <ForecastRow label="Транспортный налог" value={forecast.tax} total={forecast.total} color="#94A3B8" />
+            </div>
+
+            <p className="flex items-start gap-2 rounded-[10px] border border-[#363B43] bg-[#1A1D22] p-2.5 text-[11.5px] leading-relaxed text-[#A9AFB7]">
+              <ChartIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#A9AFB7]" />
+              <span>
+                Без платежей по кредиту содержание обходится в{' '}
+                <strong className="text-[#F3F4F4]">
+                  {cost.perKmExLoan
+                    ? `${cost.perKmExLoan.toFixed(1).replace('.', ',')} ₽/км`
+                    : fmtMoney(cost.perMonthExLoan) + '/мес'}
+                </strong>
+                . Ориентир {TCO_BENCHMARK.source} —{' '}
+                {String(TCO_BENCHMARK.perKm).replace('.', ',')} ₽/км и{' '}
+                {fmtMoney(TCO_BENCHMARK.perYear)} в год (с каско, шинами и потерей в цене).
+                {cost.perKmExLoan
+                  ? cost.perKmExLoan < TCO_BENCHMARK.perKm
+                    ? ' Вы укладываетесь в ориентир.'
+                    : ' Это выше ориентира — посмотрите структуру трат.'
+                  : ''}
+              </span>
+            </p>
+          </Card>
 
           {/* Диаграмма и таблица структуры трат по категориям */}
           <SectionTitle>Структура расходов по категориям</SectionTitle>
@@ -417,6 +570,34 @@ function FuelStat({
         {value}
       </p>
       {sub && <p className="mt-0.5 text-[11px] text-[#A9AFB7]">{sub}</p>}
+    </div>
+  )
+}
+
+function ForecastRow({
+  label,
+  value,
+  total,
+  color,
+}: {
+  label: string
+  value: number
+  total: number
+  color: string
+}) {
+  const share = total > 0 ? Math.min(100, (value / total) * 100) : 0
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="min-w-0 flex-1 truncate text-[12.5px] text-[#A9AFB7]">{label}</span>
+      <span className="h-1.5 w-16 overflow-hidden rounded-full bg-[#23272D] sm:w-24">
+        <span
+          className="block h-full rounded-full"
+          style={{ width: `${share}%`, backgroundColor: color }}
+        />
+      </span>
+      <span className="font-display-num w-20 text-right text-[12.5px] font-bold text-[#F3F4F4]">
+        {fmtMoney(value)}
+      </span>
     </div>
   )
 }

@@ -25,6 +25,8 @@ interface AuthContextValue {
   signUp(email: string, password: string): Promise<SignUpResult>
   signOut(): Promise<void>
   enterDemo(): Promise<void>
+  /** Выйти из демо-режима, не трогая сессию (используется экраном входа) */
+  leaveDemo(): void
   resendConfirmation(email: string): Promise<void>
 }
 
@@ -112,9 +114,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const enterDemo = useCallback(async () => {
     setDemoMode(true)
     const demo = getBackend()
-    const demoUser = await demo.auth.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password)
-    setBackend(demo)
-    setUser(demoUser)
+    try {
+      const demoUser = await demo.auth.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password)
+      setBackend(demo)
+      setUser(demoUser)
+    } catch (e) {
+      // не оставляем приложение в «демо без сессии»: иначе форма входа
+      // будет обращаться к localStorage вместо Supabase
+      setDemoMode(false)
+      setBackend(getBackend())
+      throw e
+    }
+  }, [])
+
+  /** Возврат в облачный режим с экрана входа (демо-сессии нет — терять нечего) */
+  const leaveDemo = useCallback(() => {
+    if (isDemoOnly()) return
+    setDemoMode(false)
+    setBackend(getBackend())
   }, [])
 
   const value: AuthContextValue = {
@@ -156,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
     enterDemo,
+    leaveDemo,
     async resendConfirmation(email) {
       guardCooldown()
       try {

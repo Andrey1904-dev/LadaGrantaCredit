@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
+    "test": "node scripts/test.mjs",
+    "check": "npm run typecheck && npm test && npm run smoke && npm run build",
     "smoke": "node scripts/smoke-demo.mjs && node scripts/smoke-build.mjs && node scripts/smoke-build.mjs --blank && node scripts/smoke-build.mjs --empty",
     "images": "node scripts/prepare-images.mjs",
     "supabase:auth": "node scripts/supabase-auth-setup.mjs"
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
+    "@types/node": "^26.6.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",

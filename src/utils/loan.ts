@@ -80,3 +80,109 @@ export function remainingBalance(
 export function firstMonthInterest(S: number, annualPercent: number): number {
   return S * monthlyRate(annualPercent)
 }
+
+/* ------------------------------------------------------------------ */
+/*  Досрочное погашение                                                */
+/* ------------------------------------------------------------------ */
+
+export type PrepaymentMode = 'term' | 'payment'
+
+export interface PrepaymentInput {
+  /** Текущий остаток основного долга, ₽ */
+  balance: number
+  /** Годовая ставка, % */
+  annualPercent: number
+  /** Ежемесячный платёж по договору, ₽ */
+  payment: number
+  /** Сколько платежей осталось по графику */
+  termLeft: number
+  /** Разовый досрочный взнос сегодня, ₽ */
+  oneTime?: number
+  /** Регулярная доплата к каждому платежу, ₽ */
+  monthly?: number
+  /**
+   * Что пересчитывает банк после досрочного взноса:
+   *  • `term`    — платёж прежний, срок сокращается (выгоднее по процентам);
+   *  • `payment` — срок прежний, платёж пересчитывается на остаток.
+   */
+  mode: PrepaymentMode
+}
+
+export interface PrepaymentPlan {
+  /** Сколько месяцев осталось платить */
+  months: number
+  /** Переплата по процентам за оставшийся срок, ₽ */
+  interest: number
+  /** Сколько всего уйдёт банку (тело + проценты + досрочные взносы), ₽ */
+  totalPaid: number
+  /** Размер регулярного платежа после пересчёта, ₽ */
+  payment: number
+  /** Последний (неполный) платёж, ₽ */
+  lastPayment: number
+}
+
+const MAX_MONTHS = 1200 // защита от бесконечного цикла при некорректных данных
+
+/**
+ * Помесячная симуляция погашения аннуитетного кредита с досрочными взносами.
+ *
+ * Проценты начисляются на остаток: `проценты = остаток · r`, остальное из
+ * платежа идёт в тело долга. Именно поэтому сокращение срока выгоднее
+ * уменьшения платежа — процент начисляется меньшее число месяцев.
+ *
+ * Возвращает null, если платёж не покрывает даже проценты (долг не гасится).
+ */
+export function simulatePrepayment(input: PrepaymentInput): PrepaymentPlan | null {
+  const { annualPercent, mode } = input
+  const oneTime = Math.max(0, input.oneTime ?? 0)
+  const extra = Math.max(0, input.monthly ?? 0)
+  const r = monthlyRate(annualPercent)
+
+  let balance = Math.max(0, input.balance - oneTime)
+  let termLeft = Math.max(1, Math.round(input.termLeft))
+  let payment = input.payment
+
+  // банк пересчитывает платёж под прежний срок
+  if (mode === 'payment') {
+    const recalculated = annuityPayment(balance, annualPercent, termLeft)
+    if (Number.isFinite(recalculated)) payment = recalculated
+  }
+
+  if (balance <= 0) {
+    return { months: 0, interest: 0, totalPaid: oneTime, payment: 0, lastPayment: 0 }
+  }
+  if (payment + extra <= balance * r) return null // платёж не покрывает проценты
+
+  let interest = 0
+  let paid = oneTime
+  let months = 0
+  let last = 0
+  let current = payment
+
+  while (balance > 0.005 && months < MAX_MONTHS) {
+    const accrued = balance * r
+    let due = current + extra
+    if (due >= balance + accrued) due = balance + accrued // последний платёж — «в ноль»
+    const principal = due - accrued
+    if (principal <= 0) return null
+    balance = Math.max(0, balance - principal)
+    interest += accrued
+    paid += due
+    last = due
+    months++
+    if (mode === 'payment' && extra > 0 && balance > 0) {
+      // при регулярной доплате банк каждый месяц пересчитывает платёж на прежний срок
+      const left = Math.max(1, termLeft - months)
+      const next = annuityPayment(balance, annualPercent, left)
+      if (Number.isFinite(next)) current = next
+    }
+  }
+
+  return {
+    months,
+    interest,
+    totalPaid: paid,
+    payment: mode === 'payment' ? payment : input.payment,
+    lastPayment: last,
+  }
+}

@@ -181,7 +181,9 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       role="tablist"
-      className="grid grid-cols-2 gap-1 rounded-[10px] border border-[#363B43] bg-[#1A1D22] p-1"
+      // колонки по числу вкладок: контрол используется и с двумя, и с тремя режимами
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+      className="grid gap-1 rounded-[10px] border border-[#363B43] bg-[#1A1D22] p-1"
     >
       {options.map((o) => {
         const active = value === o.value
@@ -192,7 +194,7 @@ export function SegmentedControl<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(o.value)}
-            className={`relative min-h-[44px] rounded-[8px] px-3 py-2 text-[13px] font-bold transition-all duration-180 ${
+            className={`relative min-h-[44px] truncate rounded-[8px] px-2.5 py-2 text-[13px] font-bold transition-all duration-180 ${
               active
                 ? 'bg-[#23272D] text-[#F3F4F4] shadow-[inset_0_-2px_0_0_#E33337]'
                 : 'text-[#A9AFB7] hover:text-[#F3F4F4]'

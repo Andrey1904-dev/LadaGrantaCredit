@@ -12,10 +12,13 @@ import {
   GaugeIcon,
   HistoryIcon,
   InfoIcon,
+  LicenseIcon,
   PlusIcon,
+  SettingsIcon,
   ShieldIcon,
   SnowIcon,
   SunIcon,
+  TaxIcon,
   TrendIcon,
   TyreIcon,
   WrenchIcon,
@@ -35,8 +38,17 @@ import {
   type ServiceStatus,
 } from '../lib/service'
 import { monthlyMileage } from '../utils/fuel'
+import { TAX_REGIONS, taxDueDate, taxRateFor, transportTax } from '../lib/tax'
 import { addMonths, daysUntil } from '../utils/date'
-import { fmtDate, fmtMileage, fmtMoney, parseLocaleNumber, plural, toDateInputValue } from '../utils/format'
+import {
+  fmtDate,
+  fmtMileage,
+  fmtMoney,
+  fmtNumber,
+  parseLocaleNumber,
+  plural,
+  toDateInputValue,
+} from '../utils/format'
 import type { EngineId } from '../lib/service'
 
 /**
@@ -111,6 +123,23 @@ export default function ServicePage() {
 
   const insuranceDays = car?.insurance_until ? daysUntil(car.insurance_until) : null
   const inspectionDays = settings.inspectionUntil ? daysUntil(settings.inspectionUntil) : null
+  const licenseDays = settings.licenseUntil ? daysUntil(settings.licenseUntil) : null
+
+  /* Транспортный налог: мощность мотора × ставка региона, срок уплаты — 1 декабря */
+  const tax = useMemo(() => {
+    const engine = engineInfo(settings.engine)
+    const rate = settings.taxRateOverride ?? taxRateFor(settings.taxRegion, engine.power)
+    const due = taxDueDate()
+    return {
+      amount: transportTax(engine.power, rate),
+      rate,
+      hp: engine.power,
+      region: TAX_REGIONS.find((r) => r.id === settings.taxRegion)?.label ?? 'свой регион',
+      custom: settings.taxRateOverride !== null,
+      due,
+      days: daysUntil(toDateInputValue(due)),
+    }
+  }, [settings.engine, settings.taxRegion, settings.taxRateOverride])
 
   if (loading) {
     return (
@@ -175,8 +204,8 @@ export default function ServicePage() {
         }
       />
 
-      {/* Панель напоминаний: ОСАГО, диагностическая карта, сезон шин */}
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+      {/* Документы и платежи: ОСАГО, диагностическая карта, права, шины, налог */}
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
         <ReminderCard
           icon={<ShieldIcon className="h-4 w-4" />}
           title="ОСАГО"
@@ -194,6 +223,13 @@ export default function ServicePage() {
           onClick={() => setTuningOpen(true)}
         />
         <ReminderCard
+          icon={<LicenseIcon className="h-4 w-4" />}
+          title="Водительские права"
+          value={settings.licenseUntil ? fmtDate(settings.licenseUntil) : 'Срок не указан'}
+          days={licenseDays}
+          onClick={() => setTuningOpen(true)}
+        />
+        <ReminderCard
           icon={<TyreIcon className="h-4 w-4" />}
           title={settings.tyreSeason === 'winter' ? 'Зимняя резина' : 'Летняя резина'}
           value={
@@ -205,6 +241,32 @@ export default function ServicePage() {
           onClick={() => setTuningOpen(true)}
         />
       </div>
+
+      {/* Транспортный налог — считается сам по мощности мотора и региону */}
+      <Card className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#23272D] text-[#A9AFB7]">
+            <TaxIcon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A9AFB7]">
+              Транспортный налог за год
+            </p>
+            <p className="font-display-num mt-0.5 text-[22px] font-bold leading-none text-[#F3F4F4]">
+              {fmtMoney(tax.amount)}
+            </p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[#A9AFB7]">
+              {tax.hp} л.с. × {fmtNumber(tax.rate)} ₽ · {tax.custom ? 'своя ставка' : tax.region} ·
+              заплатить до {fmtDate(toDateInputValue(tax.due))}
+              {tax.days > 0 ? ` (${tax.days} дн.)` : ''}
+            </p>
+          </div>
+        </div>
+        <Button variant="ghost" onClick={() => setTuningOpen(true)} className="shrink-0">
+          <SettingsIcon className="h-4 w-4" />
+          Регион и ставка
+        </Button>
+      </Card>
 
       {/* Ближайшая работа крупным планом */}
       {nearest && (
@@ -576,6 +638,37 @@ export default function ServicePage() {
             value={settings.inspectionUntil ?? ''}
             onChange={(e) => updateSettings({ inspectionUntil: e.target.value || null })}
             hint="Для личных легковых ОСАГО её не требует, но она обязательна при регистрации авто старше 4 лет и смене собственника."
+          />
+
+          <Field
+            label="Водительское удостоверение действует до"
+            type="date"
+            value={settings.licenseUntil ?? ''}
+            onChange={(e) => updateSettings({ licenseUntil: e.target.value || null })}
+            hint="Напомним заранее: замена прав по истечении срока — это госпошлина и медсправка."
+          />
+
+          <Select
+            label="Регион регистрации (ставка налога)"
+            value={settings.taxRegion}
+            onChange={(e) => updateSettings({ taxRegion: e.target.value, taxRateOverride: null })}
+          >
+            {TAX_REGIONS.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label} — {fmtNumber(taxRateFor(r.id, engine.power))} ₽/л.с.
+              </option>
+            ))}
+          </Select>
+
+          <Field
+            label="Своя ставка, ₽ за 1 л.с."
+            inputMode="decimal"
+            value={settings.taxRateOverride === null ? '' : String(settings.taxRateOverride)}
+            onChange={(e) => {
+              const v = parseLocaleNumber(e.target.value)
+              updateSettings({ taxRateOverride: Number.isFinite(v) && v > 0 ? v : null })
+            }}
+            hint="Заполните, если вашего региона нет в списке — ставку можно посмотреть в сервисе ФНС."
           />
 
           <Field

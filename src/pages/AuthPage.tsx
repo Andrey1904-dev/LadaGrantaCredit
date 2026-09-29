@@ -8,7 +8,8 @@ import { AlertIcon, ArrowUpRightIcon, CarIcon, CheckIcon, InfoIcon } from '../co
 
 /** Экран 0: Авторизация и вход в личный кабинет владельца LADA Granta Sport */
 export default function AuthPage() {
-  const { signIn, signUp, enterDemo, resendConfirmation, demoOnly, settings } = useAuth()
+  const { signIn, signUp, enterDemo, leaveDemo, resendConfirmation, demoOnly, mode, settings } =
+    useAuth()
   const [isRegister, setIsRegister] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -18,6 +19,18 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false)
   const [cooldown, setCooldown] = useState(mailCooldownLeft())
   const passwordRef = useRef<HTMLInputElement>(null)
+
+  /**
+   * На экран входа попадают только без сессии. Если при этом приложение всё
+   * ещё помнит демо-режим (сессию очистили вручную, браузер почистил
+   * localStorage), форма входа обращалась бы к localStorage вместо Supabase
+   * и выдавала «неверный пароль» на реальную учётку. Возвращаем облачный режим.
+   */
+  useEffect(() => {
+    if (mode === 'demo' && !demoOnly) leaveDemo()
+    // только при монтировании: вход в демо ниже по коду не должен его отменять
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (cooldown <= 0) return

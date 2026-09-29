@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { EngineId } from './service'
+import { DEFAULT_TAX_REGION } from './tax'
 
 /**
  * Пользовательские настройки гаража, которых нет в схеме БД
@@ -31,6 +32,12 @@ export interface AppSettings {
   tyreChangedKm: number | null
   /** Диагностическая карта (техосмотр) действует до */
   inspectionUntil: string | null
+  /** Водительское удостоверение действует до */
+  licenseUntil: string | null
+  /** Регион регистрации — от него зависит ставка транспортного налога */
+  taxRegion: string
+  /** Своя ставка ₽/л.с., если региона нет в списке */
+  taxRateOverride: number | null
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -43,6 +50,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   tyreChangedDate: null,
   tyreChangedKm: null,
   inspectionUntil: null,
+  licenseUntil: null,
+  taxRegion: DEFAULT_TAX_REGION,
+  taxRateOverride: null,
 }
 
 const KEY = 'lgc_settings_v1'

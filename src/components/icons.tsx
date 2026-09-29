@@ -1,5 +1,10 @@
 import {
   AlertTriangle,
+  BadgeRussianRuble,
+  BarChart3,
+  Download,
+  FileText,
+  IdCard,
   ArrowUpRight,
   Battery,
   Bell,
@@ -33,6 +38,7 @@ import {
   Sun,
   Timer,
   Trash2,
+  TrendingDown,
   TrendingUp,
   Wallet,
   Wrench,
@@ -197,4 +203,28 @@ export const BellIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps)
 
 export const HistoryIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
   <History className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const TrendDownIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <TrendingDown className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const ChartIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <BarChart3 className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const DocIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <FileText className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const LicenseIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <IdCard className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const TaxIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <BadgeRussianRuble className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const DownloadIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Download className={base(className)} strokeWidth={strokeWidth} />
 )

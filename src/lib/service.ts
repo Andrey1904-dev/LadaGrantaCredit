@@ -470,7 +470,7 @@ export function recordMatches(item: ServiceItem, description: string): boolean {
   return item.keywords.some((w) => text.includes(norm(w)))
 }
 
-const intervalFor = (item: ServiceItem, mode: PlanMode): Interval =>
+export const intervalFor = (item: ServiceItem, mode: PlanMode): Interval =>
   mode === 'factory' ? item.factory : { ...item.factory, ...item.forum }
 
 /** Порог «скоро»: 20% ресурса, но не больше 2 000 км / 45 дней */

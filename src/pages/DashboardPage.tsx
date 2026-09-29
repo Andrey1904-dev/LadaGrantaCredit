@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAppData } from '../context/AppDataContext'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import Sheet from '../components/Sheet'
+import UpcomingEvents from '../components/UpcomingEvents'
 import {
   Button,
   Card,
@@ -405,6 +406,10 @@ export default function DashboardPage() {
           </Link>
         </Card>
       </section>
+
+
+      {/* Календарь владельца: платежи и документы, у которых скоро срок */}
+      <UpcomingEvents />
 
       {/* 3. БЫСТРЫЕ ДЕЙСТВИЯ РАСХОДОВ (чёткая инструментальная панель без разноцветных кругов) */}
       <section aria-label="Быстрое добавление расхода">

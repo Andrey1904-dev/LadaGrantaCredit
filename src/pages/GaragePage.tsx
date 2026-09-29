@@ -14,6 +14,8 @@ import {
   AlertIcon,
   CarIcon,
   CheckIcon,
+  DocIcon,
+  DownloadIcon,
   EditIcon,
   PlusIcon,
   ShieldIcon,
@@ -40,11 +42,20 @@ import PageHero, { HeroChip } from '../components/PageHero'
 import { Link } from 'react-router-dom'
 import { useSettings } from '../lib/settings'
 import { SERVICE_ITEMS, buildServicePlan } from '../lib/service'
+import {
+  backupFileName,
+  buildBackup,
+  buildExpensesCsv,
+  buildMaintenanceCsv,
+  downloadTextFile,
+} from '../lib/backup'
 
 /** Вкладка 4: Гараж — паспорт LADA Granta Sport, выбор цвета кузова (визуал), ОСАГО и журнал ТО */
 export default function GaragePage() {
   const {
     car,
+    loan,
+    transactions,
     maintenance,
     loading,
     saveCar,
@@ -313,6 +324,61 @@ export default function GaragePage() {
           ))}
         </div>
       )}
+
+      {/* Выгрузка данных: резервная копия и таблицы для Excel */}
+      <SectionTitle
+        action={<span className="text-[11.5px] text-[#A9AFB7]">всё считается в браузере</span>}
+      >
+        Мои данные
+      </SectionTitle>
+      <Card className="flex flex-col gap-3">
+        <p className="text-[12.5px] leading-relaxed text-[#A9AFB7]">
+          Резервная копия — весь гараж одним файлом: автомобиль, кредит, {transactions.length}{' '}
+          {plural(transactions.length, ['операция', 'операции', 'операций'])} и журнал ТО.
+          Таблицы CSV открываются в Excel, Numbers и Google Таблицах.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            onClick={() =>
+              downloadTextFile(
+                backupFileName('json'),
+                buildBackup({ car, loan, transactions, maintenance, settings }),
+                'application/json',
+              )
+            }
+          >
+            <DownloadIcon className="h-4 w-4" />
+            Резервная копия
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              downloadTextFile(
+                `raskhody-${backupFileName('csv')}`,
+                buildExpensesCsv(transactions),
+                'text/csv',
+              )
+            }
+          >
+            <DocIcon className="h-4 w-4" />
+            Расходы в CSV
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() =>
+              downloadTextFile(
+                `zhurnal-to-${backupFileName('csv')}`,
+                buildMaintenanceCsv(maintenance),
+                'text/csv',
+              )
+            }
+          >
+            <DocIcon className="h-4 w-4" />
+            Журнал ТО в CSV
+          </Button>
+        </div>
+      </Card>
 
       {/* Переход к полному регламенту: журнал выше — про прошлое, этот блок — про будущее */}
       <Link
