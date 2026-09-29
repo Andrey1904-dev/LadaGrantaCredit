@@ -31,25 +31,27 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Ключи берутся из Secrets репозитория. Если их не задать,
-      # приложение соберётся в демо-режиме: регистрация и вход по email
-      # работать не будут. Поэтому проверяем ключи ДО сборки и деплоя
-      # и обрываем запуск с понятной ошибкой.
+      # Ключи Supabase. Значения ищутся в таком порядке:
+      #   1. Secrets репозитория (Settings → Secrets and variables → Actions → Secrets)
+      #   2. Variables репозитория (там же, вкладка Variables)
+      #   3. URL проекта — значение по умолчанию ниже (URL публичный, как в README)
+      # Если anon-ключ не найден — деплой обрывается с понятной ошибкой,
+      # иначе на Pages уехала бы сборка в демо-режиме без регистрации.
       - name: Проверить ключи Supabase
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || vars.VITE_SUPABASE_URL || 'https://dcgurmwvpgzmlfivxoso.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || vars.VITE_SUPABASE_ANON_KEY }}
         run: |
           FAIL=0
           if [ -z "$VITE_SUPABASE_URL" ]; then
-            echo "::error title=Не задан секрет VITE_SUPABASE_URL::Добавьте его в Settings → Secrets and variables → Actions. Без ключей приложение соберётся в демо-режиме, где регистрация и вход отключены."
+            echo "::error title=Не задан VITE_SUPABASE_URL::Добавьте его в Settings → Secrets and variables → Actions (Secrets или Variables)."
             FAIL=1
           elif ! [[ "$VITE_SUPABASE_URL" == https://* ]] || [[ "$VITE_SUPABASE_URL" == *your-project-ref* ]]; then
             echo "::error title=Некорректный VITE_SUPABASE_URL::Ожидался адрес вида https://<project-ref>.supabase.co (Settings → API в дашборде Supabase)."
             FAIL=1
           fi
           if [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::error title=Не задан секрет VITE_SUPABASE_ANON_KEY::Добавьте publishable (anon) ключ проекта в Settings → Secrets and variables → Actions."
+            echo "::error title=Не задан VITE_SUPABASE_ANON_KEY::Добавьте publishable (anon) ключ проекта в Settings → Secrets and variables → Actions → Secrets (или Variables). Взять: Supabase Dashboard → Project Settings → API → Project API keys → anon/publishable."
             FAIL=1
           fi
           if [ "$FAIL" -ne 0 ]; then
@@ -60,8 +62,8 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || vars.VITE_SUPABASE_URL || 'https://dcgurmwvpgzmlfivxoso.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || vars.VITE_SUPABASE_ANON_KEY }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
