@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
-    "smoke": "node scripts/smoke-build.mjs && node scripts/smoke-build.mjs --empty",
+    "smoke": "node scripts/smoke-demo.mjs && node scripts/smoke-build.mjs && node scripts/smoke-build.mjs --blank && node scripts/smoke-build.mjs --empty",
     "images": "node scripts/prepare-images.mjs",
     "supabase:auth": "node scripts/supabase-auth-setup.mjs"
   },

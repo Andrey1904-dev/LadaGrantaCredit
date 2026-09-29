@@ -8,7 +8,7 @@ import { AlertIcon, ArrowUpRightIcon, CarIcon, CheckIcon, InfoIcon } from '../co
 
 /** Экран 0: Авторизация и вход в личный кабинет владельца LADA Granta Sport */
 export default function AuthPage() {
-  const { signIn, signUp, enterDemo, resendConfirmation, mode, settings } = useAuth()
+  const { signIn, signUp, enterDemo, resendConfirmation, demoOnly, settings } = useAuth()
   const [isRegister, setIsRegister] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -84,6 +84,19 @@ export default function AuthPage() {
     setBusy(true)
     try {
       await signIn(check.email || pendingEmail, password)
+    } catch (e) {
+      fail(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Вход в локальный демо-кабинет: работает и в сборке с ключами Supabase */
+  const enterDemoMode = async () => {
+    reset()
+    setBusy(true)
+    try {
+      await enterDemo()
     } catch (e) {
       fail(e)
     } finally {
@@ -176,7 +189,7 @@ export default function AuthPage() {
         {/* Правая / нижняя колонка: форма входа, предупреждения Supabase и демо-режим */}
         <div className="px-4 pb-10 pt-4 lg:col-span-5 lg:px-0 lg:py-0">
           <div className="rounded-[12px] border border-[#363B43] bg-[#1A1D22] p-5 sm:p-6">
-            {mode === 'demo' ? (
+            {demoOnly ? (
               /* Демо-режим: сборка без ключей Supabase */
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between border-b border-[#363B43] pb-3">
@@ -207,12 +220,22 @@ export default function AuthPage() {
                 </div>
 
                 <Button
-                  onClick={() => void enterDemo()}
+                  onClick={() => void enterDemoMode()}
+                  disabled={busy}
                   className="w-full py-3 text-[14.5px]"
                 >
-                  Войти в демо-режим
+                  {busy ? 'Открываем демо-кабинет…' : 'Войти в демо-режим'}
                   <ArrowUpRightIcon className="h-4 w-4" />
                 </Button>
+
+                {problem && (
+                  <div
+                    role="alert"
+                    className="rounded-[10px] border border-[#EF4444]/45 bg-[#EF4444]/12 p-3.5 text-[12.5px] text-[#F3F4F4]"
+                  >
+                    {problem.message}
+                  </div>
+                )}
 
                 <div className="rounded-[10px] border border-[#363B43] bg-[#23272D]/60 p-3.5 text-[12px] leading-relaxed text-[#A9AFB7]">
                   <strong className="text-[#F3F4F4]">Как подключить Supabase:</strong> локально скопируйте{' '}
@@ -413,13 +436,18 @@ export default function AuthPage() {
 
                 <Button
                   variant="secondary"
-                  onClick={() => void enterDemo()}
+                  onClick={() => void enterDemoMode()}
                   disabled={busy}
                   className="w-full"
                 >
-                  Войти в демо-режим
+                  {busy ? 'Открываем демо-кабинет…' : 'Войти в демо-режим'}
                   <ArrowUpRightIcon className="h-4 w-4 text-[#E33337]" />
                 </Button>
+                <p className="-mt-1 text-center text-[11.5px] leading-relaxed text-[#A9AFB7]">
+                  Демо-кабинет заполнен данными LADA Granta Sport и хранится только в этом
+                  браузере: кредит, расходы, журнал ТО и план обслуживания можно свободно менять.
+                  Выход из демо вернёт обычный вход по email.
+                </p>
               </div>
             )}
           </div>

@@ -3,15 +3,20 @@ import { useAppData } from '../context/AppDataContext'
 import AddTransactionSheet from '../components/AddTransactionSheet'
 import DonutChart from '../components/DonutChart'
 import { Button, Card, EmptyState, SectionTitle, Spinner } from '../components/ui'
-import { EditIcon, PlusIcon, TrashIcon, WalletIcon } from '../components/icons'
+import PageHero, { HeroChip } from '../components/PageHero'
+import { EditIcon, FuelIcon, PlusIcon, TrashIcon, WalletIcon } from '../components/icons'
 import { CATEGORY_META } from '../lib/categories'
+import { PAGE_MEDIA } from '../lib/assets'
+import { useSettings } from '../lib/settings'
 import { TX_CATEGORIES, type Transaction, type TxCategory } from '../types/domain'
 import { startOfMonth } from '../utils/date'
-import { fmtDate, fmtMileage, fmtMoney } from '../utils/format'
+import { computeFuelStats } from '../utils/fuel'
+import { fmtDate, fmtMileage, fmtMoney, fmtNumber } from '../utils/format'
 
 /** Вкладка 3: Расходы — аналитика стоимости владения, Donut-диаграмма и лента операций */
 export default function ExpensesPage() {
   const { transactions, car, loading, removeTransaction } = useAppData()
+  const [settings] = useSettings()
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [filterCat, setFilterCat] = useState<TxCategory | 'all'>('all')
@@ -41,6 +46,12 @@ export default function ExpensesPage() {
     return { total, month, costPerKm, chart }
   }, [transactions, car])
 
+  /* Топливная аналитика: расход л/100 км и стоимость километра по чекам */
+  const fuel = useMemo(
+    () => computeFuelStats(transactions, settings.fuelPrice, settings.tankLiters),
+    [transactions, settings.fuelPrice, settings.tankLiters],
+  )
+
   const filteredTransactions = useMemo(() => {
     if (filterCat === 'all') return transactions
     return transactions.filter((t) => t.category === filterCat)
@@ -56,22 +67,45 @@ export default function ExpensesPage() {
 
   return (
     <div className="animate-pop-in">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="h-5 w-1.5 rounded-full bg-[#E33337]" aria-hidden="true" />
-          <h1 className="font-display-num text-[22px] font-bold uppercase tracking-wide text-[#F3F4F4]">
-            Расходы и аналитика
-          </h1>
-        </div>
-        <Button
-          onClick={() => {
-            setEditingTx(null)
-            setSheetOpen(true)
-          }}
-        >
-          <PlusIcon className="h-4 w-4" />
-          Добавить расход
-        </Button>
+      <div className="mb-4">
+        <PageHero
+          media={PAGE_MEDIA.expenses}
+          eyebrow="Стоимость владения"
+          title="Расходы и аналитика"
+          subtitle="Структура трат по категориям, стоимость километра и реальный расход топлива по чекам заправок."
+          priority
+          action={
+            <Button
+              onClick={() => {
+                setEditingTx(null)
+                setSheetOpen(true)
+              }}
+            >
+              <PlusIcon className="h-4 w-4" />
+              Добавить расход
+            </Button>
+          }
+          chips={
+            <>
+              <HeroChip label="Записей" value={String(transactions.length)} />
+              <HeroChip
+                icon={<FuelIcon className="h-3.5 w-3.5" />}
+                label={fuel.avgPer100 ? 'Расход' : 'Топливо'}
+                value={
+                  fuel.avgPer100
+                    ? `${fuel.avgPer100.toFixed(1).replace('.', ',')} л/100 км`
+                    : fmtMoney(fuel.totalRub)
+                }
+              />
+              {stats.costPerKm !== null && (
+                <HeroChip
+                  label="Километр"
+                  value={`${stats.costPerKm.toFixed(1).replace('.', ',')} ₽`}
+                />
+              )}
+            </>
+          }
+        />
       </div>
 
       {transactions.length === 0 ? (
@@ -107,6 +141,52 @@ export default function ExpensesPage() {
               accent
             />
           </div>
+
+          {/* Топливо: расход, стоимость километра, запас хода */}
+          <SectionTitle
+            action={
+              <span className="text-[11.5px] text-[#A9AFB7]">
+                оценка по цене {fmtNumber(settings.fuelPrice)} ₽/л
+              </span>
+            }
+          >
+            Топливо и расход
+          </SectionTitle>
+          {fuel.legs.length === 0 ? (
+            <Card className="text-[12.5px] leading-relaxed text-[#A9AFB7]">
+              Чтобы приложение посчитало расход, добавьте минимум две заправки
+              <strong className="text-[#F3F4F4]"> «до полного»</strong> с показаниями одометра.
+              Цена литра настраивается на вкладке «ТО» → «Шины и документы».
+            </Card>
+          ) : (
+            <Card className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <FuelStat
+                label="Средний расход"
+                value={`${fuel.avgPer100!.toFixed(1).replace('.', ',')} л`}
+                sub="на 100 км"
+                accent
+              />
+              <FuelStat
+                label="Последние заправки"
+                value={`${fuel.recentPer100!.toFixed(1).replace('.', ',')} л`}
+                sub={
+                  fuel.recentPer100! > fuel.avgPer100!
+                    ? 'выше среднего'
+                    : 'не выше среднего'
+                }
+              />
+              <FuelStat
+                label="Топливо на километр"
+                value={`${fuel.rubPerKm!.toFixed(1).replace('.', ',')} ₽`}
+                sub={`бак ≈ ${fmtMileage(Math.round(fuel.rangePerTank ?? 0))}`}
+              />
+              <FuelStat
+                label="Залито всего"
+                value={`${Math.round(fuel.totalLiters)} л`}
+                sub={`${fuel.count} заправок на ${fmtMoney(fuel.totalRub)}`}
+              />
+            </Card>
+          )}
 
           {/* Диаграмма и таблица структуры трат по категориям */}
           <SectionTitle>Структура расходов по категориям</SectionTitle>
@@ -309,5 +389,34 @@ function StatCard({
         {value}
       </p>
     </Card>
+  )
+}
+
+/** Показатель топливной статистики внутри карточки */
+function FuelStat({
+  label,
+  value,
+  sub,
+  accent = false,
+}: {
+  label: string
+  value: string
+  sub?: string
+  accent?: boolean
+}) {
+  return (
+    <div>
+      <p className="truncate text-[11px] font-semibold uppercase tracking-wider text-[#A9AFB7]">
+        {label}
+      </p>
+      <p
+        className={`font-display-num mt-1 text-[20px] font-bold leading-tight sm:text-[22px] ${
+          accent ? 'text-[#E33337]' : 'text-[#F3F4F4]'
+        }`}
+      >
+        {value}
+      </p>
+      {sub && <p className="mt-0.5 text-[11px] text-[#A9AFB7]">{sub}</p>}
+    </div>
   )
 }

@@ -22,6 +22,8 @@ import {
   GaugeIcon,
   PlusIcon,
   ShieldIcon,
+  TrendIcon,
+  TyreIcon,
   WrenchIcon,
 } from '../components/icons'
 import { daysUntil, nextPaymentDate, startOfMonth } from '../utils/date'
@@ -38,11 +40,15 @@ import {
   getSavedFinish,
   type GrantaFinish,
 } from '../lib/assets'
+import { useSettings } from '../lib/settings'
+import { buildServicePlan, STATE_META } from '../lib/service'
+import { computeFuelStats, monthlyMileage } from '../utils/fuel'
 import type { TxCategory } from '../types/domain'
 
 /** Вкладка 1: Главная (Личный кабинет владельца LADA Granta Sport) */
 export default function DashboardPage() {
-  const { car, loan, transactions, loading, saveCar } = useAppData()
+  const { car, loan, transactions, maintenance, loading, saveCar } = useAppData()
+  const [settings] = useSettings()
   const [txSheet, setTxSheet] = useState<TxCategory | null>(null)
   const [mileageOpen, setMileageOpen] = useState(false)
   const [newMileage, setNewMileage] = useState('')
@@ -88,6 +94,26 @@ export default function DashboardPage() {
       loan.total_amount > 0 ? (loan.total_amount - remaining) / loan.total_amount : 0
     return { paidCount, remaining, nextDate, progress }
   }, [loan, transactions])
+
+  /* Ближайшая регламентная работа — тот же расчёт, что и на вкладке «ТО» */
+  const nextService = useMemo(() => {
+    if (!car) return null
+    const plan = buildServicePlan({
+      mileage: car.current_mileage,
+      mode: settings.planMode,
+      engine: settings.engine,
+      maintenance,
+      purchaseDate: settings.purchaseDate,
+    })
+    return plan.find((s) => s.state !== 'ok') ?? plan[0] ?? null
+  }, [car, maintenance, settings.engine, settings.planMode, settings.purchaseDate])
+
+  /* Топливная аналитика: расход и стоимость километра по чекам заправок */
+  const fuel = useMemo(
+    () => computeFuelStats(transactions, settings.fuelPrice, settings.tankLiters),
+    [transactions, settings.fuelPrice, settings.tankLiters],
+  )
+  const kmPerMonth = useMemo(() => monthlyMileage(transactions), [transactions])
 
   const insuranceAlert = useMemo(() => {
     if (!car?.insurance_until) return null
@@ -213,9 +239,9 @@ export default function DashboardPage() {
           ) : (
             <div className="relative aspect-[16/9] w-full max-h-64 overflow-hidden bg-[#0E1013]">
               <img
-                src={GRANTA_ASSETS.hero.src}
-                data-webp-src={GRANTA_ASSETS.hero.webp}
-                alt={GRANTA_ASSETS.hero.alt}
+                src={GRANTA_ASSETS.road.src}
+                data-webp-src={GRANTA_ASSETS.road.webp}
+                alt={GRANTA_ASSETS.road.alt}
                 fetchPriority="high"
                 decoding="async"
                 className="h-full w-full object-cover object-center"
@@ -274,7 +300,113 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 2. БЫСТРЫЕ ДЕЙСТВИЯ РАСХОДОВ (чёткая инструментальная панель без разноцветных кругов) */}
+      {/* 2. КОНТРОЛЬ СОСТОЯНИЯ: ближайшее ТО, расход топлива, напоминания */}
+      <section aria-label="Сервис и контроль" className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+        <Link to="/service" className="group">
+          <Card className="flex h-full flex-col justify-between border-[#363B43] transition-colors group-hover:border-[#E33337]/70">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A9AFB7]">
+                  Ближайшее ТО
+                </p>
+                {nextService ? (
+                  <>
+                    <p className="mt-1 truncate text-[14px] font-bold text-[#F3F4F4]">
+                      {nextService.item.title}
+                    </p>
+                    <p
+                      className="mt-0.5 text-[12px] font-semibold"
+                      style={{ color: STATE_META[nextService.state].color }}
+                    >
+                      {nextService.remainingKm === null
+                        ? STATE_META[nextService.state].label
+                        : nextService.remainingKm >= 0
+                          ? `через ${fmtMileage(nextService.remainingKm)}`
+                          : `перепробег ${fmtMileage(Math.abs(nextService.remainingKm))}`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="mt-1 text-[13px] text-[#A9AFB7]">План обслуживания готов</p>
+                )}
+              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-[#363B43] bg-[#23272D] text-[#E33337]">
+                <WrenchIcon className="h-4 w-4" />
+              </span>
+            </div>
+            {nextService && (
+              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#0E1013]">
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(100, Math.max(3, nextService.progress * 100))}%`,
+                    backgroundColor: STATE_META[nextService.state].color,
+                  }}
+                />
+              </div>
+            )}
+          </Card>
+        </Link>
+
+        <Link to="/expenses" className="group">
+          <Card className="flex h-full flex-col justify-between border-[#363B43] transition-colors group-hover:border-[#E33337]/70">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A9AFB7]">
+                  Средний расход
+                </p>
+                <p className="font-display-num mt-1 text-[24px] font-bold leading-none text-[#F3F4F4]">
+                  {fuel.avgPer100 ? `${fuel.avgPer100.toFixed(1).replace('.', ',')} л` : '—'}
+                  {fuel.avgPer100 !== null && (
+                    <span className="ml-1 text-[12px] font-semibold text-[#A9AFB7]">/100 км</span>
+                  )}
+                </p>
+                <p className="mt-1 text-[11.5px] text-[#A9AFB7]">
+                  {fuel.rubPerKm
+                    ? `${fuel.rubPerKm.toFixed(1).replace('.', ',')} ₽/км топливо`
+                    : 'Указывайте пробег при заправке — расход посчитается сам'}
+                </p>
+              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-[#363B43] bg-[#23272D] text-[#F5A623]">
+                <FuelIcon className="h-4 w-4" />
+              </span>
+            </div>
+            {fuel.rangePerTank && (
+              <p className="mt-3 border-t border-[#363B43]/70 pt-2 text-[11.5px] text-[#A9AFB7]">
+                Бак {settings.tankLiters} л ≈ {fmtMileage(Math.round(fuel.rangePerTank))} хода
+              </p>
+            )}
+          </Card>
+        </Link>
+
+        <Card className="flex h-full flex-col justify-between border-[#363B43]">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A9AFB7]">
+                Пробег в месяц
+              </p>
+              <p className="font-display-num mt-1 text-[24px] font-bold leading-none text-[#F3F4F4]">
+                {kmPerMonth ? fmtMileage(Math.round(kmPerMonth)) : '—'}
+              </p>
+              <p className="mt-1 text-[11.5px] text-[#A9AFB7]">
+                {settings.tyreSeason === 'winter' ? 'Зимняя резина' : 'Летняя резина'}
+                {car.insurance_until ? ` · ОСАГО до ${fmtDate(car.insurance_until)}` : ''}
+              </p>
+            </div>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border border-[#363B43] bg-[#23272D] text-[#38BDF8]">
+              <TrendIcon className="h-4 w-4" />
+            </span>
+          </div>
+          <Link
+            to="/service"
+            className="mt-3 inline-flex items-center gap-1.5 border-t border-[#363B43]/70 pt-2 text-[11.5px] font-semibold text-[#E33337] hover:underline"
+          >
+            <TyreIcon className="h-3.5 w-3.5" />
+            Сезон, шины и напоминания
+          </Link>
+        </Card>
+      </section>
+
+      {/* 3. БЫСТРЫЕ ДЕЙСТВИЯ РАСХОДОВ (чёткая инструментальная панель без разноцветных кругов) */}
       <section aria-label="Быстрое добавление расхода">
         <SectionTitle
           action={
@@ -316,7 +448,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 3. КЛЮЧЕВЫЕ СЦЕНАРИИ: КРЕДИТ И СВОДКА ТРАТ МЕСЯЦА */}
+      {/* 4. КЛЮЧЕВЫЕ СЦЕНАРИИ: КРЕДИТ И СВОДКА ТРАТ МЕСЯЦА */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Следующий платёж по автокредиту */}
         <section aria-label="Автокредит" className="flex flex-col">

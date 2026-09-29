@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAppData } from '../context/AppDataContext'
+import { resetDemoData } from '../lib/local'
 import BottomNav, { NAV_TABS } from './BottomNav'
 import { AlertIcon, LogoutIcon, RefreshIcon } from './icons'
 
@@ -12,11 +13,18 @@ export default function Layout() {
   const { signOut, mode, user } = useAuth()
   const { error, refresh } = useAppData()
   const navigate = useNavigate()
+  const isDemo = mode === 'demo'
 
   const handleLogout = async () => {
-    if (!window.confirm('Выйти из аккаунта?')) return
+    if (!window.confirm(isDemo ? 'Выйти из демо-режима?' : 'Выйти из аккаунта?')) return
     await signOut()
     navigate('/auth', { replace: true })
+  }
+
+  const handleResetDemo = async () => {
+    if (!window.confirm('Пересоздать демо-данные? Ваши изменения в демо-кабинете будут потеряны.')) return
+    resetDemoData()
+    await refresh()
   }
 
   return (
@@ -46,9 +54,19 @@ export default function Layout() {
                   }`}
                   aria-hidden="true"
                 />
-                <span className="truncate max-w-[200px] sm:max-w-[300px]">
-                  {mode === 'demo' ? 'Локальный демо-режим' : user?.email || 'Кабинет владельца'}
+                <span className="truncate max-w-[160px] sm:max-w-[300px]">
+                  {isDemo ? 'Демо-режим · данные в браузере' : user?.email || 'Кабинет владельца'}
                 </span>
+                {isDemo && (
+                  <button
+                    type="button"
+                    onClick={() => void handleResetDemo()}
+                    className="hidden shrink-0 items-center gap-1 rounded-[6px] border border-[#F5A623]/45 bg-[#F5A623]/10 px-1.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wider text-[#F5A623] transition-colors hover:bg-[#F5A623]/20 sm:inline-flex"
+                  >
+                    <RefreshIcon className="h-3 w-3" />
+                    Сбросить демо
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -81,8 +99,8 @@ export default function Layout() {
           <button
             type="button"
             onClick={handleLogout}
-            aria-label="Выйти из аккаунта"
-            title="Выйти из аккаунта"
+            aria-label={isDemo ? 'Выйти из демо-режима' : 'Выйти из аккаунта'}
+            title={isDemo ? 'Выйти из демо-режима' : 'Выйти из аккаунта'}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] border border-[#363B43] bg-[#1A1D22] text-[#A9AFB7] transition-colors hover:border-[#E33337]/60 hover:bg-[#23272D] hover:text-[#F3F4F4]"
           >
             <LogoutIcon className="h-5 w-5" />

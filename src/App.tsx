@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage'
 import CreditPage from './pages/CreditPage'
 import ExpensesPage from './pages/ExpensesPage'
 import GaragePage from './pages/GaragePage'
+import ServicePage from './pages/ServicePage'
 
 function FullScreenLoader() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/credit" element={<CreditPage />} />
             <Route path="/expenses" element={<ExpensesPage />} />
+            <Route path="/service" element={<ServicePage />} />
             <Route path="/garage" element={<GaragePage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

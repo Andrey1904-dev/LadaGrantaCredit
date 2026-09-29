@@ -1,12 +1,24 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { getBackend } from '../lib'
-import type { AuthSettings, AuthUser, SignUpResult } from '../lib/backend'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react'
+import { getBackend, isDemoActive, isDemoOnly, setDemoMode, subscribeBackend } from '../lib'
+import type { AuthSettings, AuthUser, Backend, SignUpResult } from '../lib/backend'
 import { AuthProblem, toAuthProblem } from '../lib/authErrors'
+import { DEMO_CREDENTIALS } from '../lib/local'
 
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
   mode: 'supabase' | 'demo'
+  /** Демо — единственный доступный режим (сборка без ключей Supabase) */
+  demoOnly: boolean
+  /** Активный бэкенд: им же пользуется AppDataProvider, чтобы режимы не разъезжались */
+  backend: Backend
   /** Публичные настройки Auth проекта (null — пока не загружены / недоступны) */
   settings: AuthSettings | null
   signIn(email: string, password: string): Promise<void>
@@ -60,19 +72,26 @@ function guardCooldown() {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const backend = useMemo(() => getBackend(), [])
+  // бэкенд живёт в состоянии: переключение «демо ⇄ Supabase» происходит на лету
+  const [backend, setBackend] = useState<Backend>(() => getBackend())
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<AuthSettings | null>(null)
 
+  // внешние переключения режима (setDemoMode) синхронизируем с состоянием
+  useEffect(() => subscribeBackend(() => setBackend(getBackend())), [])
+
   useEffect(() => {
     let alive = true
+    setLoading(true)
     backend.auth
       .getUser()
       .then((u) => {
         if (alive) setUser(u)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (alive) setUser(null)
+      })
       .finally(() => {
         if (alive) setLoading(false)
       })
@@ -89,10 +108,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [backend])
 
+  /** Вход в локальный демо-кабинет — работает в любой сборке, даже с ключами Supabase */
+  const enterDemo = useCallback(async () => {
+    setDemoMode(true)
+    const demo = getBackend()
+    const demoUser = await demo.auth.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password)
+    setBackend(demo)
+    setUser(demoUser)
+  }, [])
+
   const value: AuthContextValue = {
     user,
     loading,
     mode: backend.mode,
+    demoOnly: isDemoOnly(),
+    backend,
     settings,
     async signIn(email, password) {
       setUser(await backend.auth.signIn(email, password))
@@ -119,10 +149,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async signOut() {
       await backend.auth.signOut()
       setUser(null)
+      // выход из демо возвращает приложение в облачный режим
+      if (isDemoActive() && !isDemoOnly()) {
+        setDemoMode(false)
+        setBackend(getBackend())
+      }
     },
-    async enterDemo() {
-      setUser(await backend.auth.signIn('demo@lada.ru', 'demo'))
-    },
+    enterDemo,
     async resendConfirmation(email) {
       guardCooldown()
       try {

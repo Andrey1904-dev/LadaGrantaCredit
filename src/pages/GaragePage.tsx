@@ -31,10 +31,15 @@ import {
 } from '../utils/format'
 import {
   GRANTA_ASSETS,
+  PAGE_MEDIA,
   getSavedFinish,
   setSavedFinish,
   type GrantaFinish,
 } from '../lib/assets'
+import PageHero, { HeroChip } from '../components/PageHero'
+import { Link } from 'react-router-dom'
+import { useSettings } from '../lib/settings'
+import { SERVICE_ITEMS, buildServicePlan } from '../lib/service'
 
 /** Вкладка 4: Гараж — паспорт LADA Granta Sport, выбор цвета кузова (визуал), ОСАГО и журнал ТО */
 export default function GaragePage() {
@@ -46,9 +51,24 @@ export default function GaragePage() {
     addMaintenance,
     removeMaintenance,
   } = useAppData()
+  const [settings] = useSettings()
   const [carSheet, setCarSheet] = useState(false)
   const [serviceSheet, setServiceSheet] = useState(false)
   const [finish, setFinish] = useState<GrantaFinish>(() => getSavedFinish())
+
+  // Короткая сводка регламента — журнал ТО и план обслуживания смотрят на одни и те же записи
+  const servicePlan = useMemo(() => {
+    if (!car) return []
+    return buildServicePlan({
+      mileage: car.current_mileage,
+      mode: settings.planMode,
+      engine: settings.engine,
+      maintenance,
+      purchaseDate: settings.purchaseDate,
+    })
+  }, [car, maintenance, settings.planMode, settings.engine, settings.purchaseDate])
+  const serviceAttention = servicePlan.filter((s) => s.state !== 'ok')
+  const nearestWork = serviceAttention[0] ?? servicePlan[0] ?? null
 
   const handleFinishChange = (next: GrantaFinish) => {
     setFinish(next)
@@ -79,17 +99,33 @@ export default function GaragePage() {
 
   return (
     <div className="animate-pop-in">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="h-5 w-1.5 rounded-full bg-[#E33337]" aria-hidden="true" />
-          <h1 className="font-display-num text-[22px] font-bold uppercase tracking-wide text-[#F3F4F4]">
-            Мой гараж · LADA Granta Sport
-          </h1>
-        </div>
-        <Button variant="secondary" onClick={() => setCarSheet(true)}>
-          <EditIcon className="h-4 w-4 text-[#E33337]" />
-          Редактировать авто
-        </Button>
+      <div className="mb-4">
+        <PageHero
+          media={PAGE_MEDIA.garage}
+          eyebrow="Паспорт автомобиля"
+          title="Мой гараж · Granta Sport"
+          subtitle="Номер, VIN, пробег, полис ОСАГО и полный журнал выполненных работ."
+          priority
+          action={
+            <Button variant="secondary" onClick={() => setCarSheet(true)}>
+              <EditIcon className="h-4 w-4 text-[#E33337]" />
+              Редактировать авто
+            </Button>
+          }
+          chips={
+            <>
+              <HeroChip label="Пробег" value={fmtMileage(car.current_mileage)} />
+              <HeroChip label="Записей ТО" value={String(maintenance.length)} />
+              <Link
+                to="/service"
+                className="inline-flex min-h-[32px] items-center gap-1.5 rounded-[7px] border border-[#E33337]/45 bg-[#E33337]/12 px-2.5 py-1 text-[12px] font-bold text-[#F3F4F4] hover:bg-[#E33337]/20"
+              >
+                <WrenchIcon className="h-3.5 w-3.5 text-[#E33337]" />
+                План обслуживания
+              </Link>
+            </>
+          }
+        />
       </div>
 
       {/* 1. Напоминание об ОСАГО (если истекает или истёк — сразу наверху, не перекрывается фото) */}
@@ -278,8 +314,11 @@ export default function GaragePage() {
         </div>
       )}
 
-      {/* Спокойная декоративная подложка шильдика SPORT внизу гаража (без наложения текста поверх шильдика) */}
-      <div className="mt-6 overflow-hidden rounded-[10px] border border-[#363B43] bg-[#1A1D22]">
+      {/* Переход к полному регламенту: журнал выше — про прошлое, этот блок — про будущее */}
+      <Link
+        to="/service"
+        className="group mt-6 block overflow-hidden rounded-[10px] border border-[#363B43] bg-[#1A1D22] transition-colors hover:border-[#E33337]/70"
+      >
         <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr]">
           <div className="h-24 w-full overflow-hidden bg-[#0E1013] sm:h-full">
             <img
@@ -292,14 +331,20 @@ export default function GaragePage() {
           </div>
           <div className="flex flex-col justify-center border-t border-[#363B43] p-3.5 sm:border-l sm:border-t-0">
             <p className="font-display-num text-[13px] font-bold uppercase tracking-wider text-[#F3F4F4]">
-              Регламент обслуживания LADA Granta Sport
+              Регламент обслуживания LADA Granta
             </p>
             <p className="mt-1 text-[12px] leading-relaxed text-[#A9AFB7]">
-              Рекомендуемый интервал замены моторного масла и фильтра — каждые 10 000–15 000 км или 1 раз в год в зависимости от условий эксплуатации.
+              {nearestWork
+                ? `Ближайшая работа: ${nearestWork.item.title.toLowerCase()}. Внимания требуют ${serviceAttention.length} из ${servicePlan.length} позиций — открыть план ТО.`
+                : `${SERVICE_ITEMS.length} регламентных работ по вашему пробегу, «болячки» Гранты и сезонные чек-листы — открыть раздел ТО.`}
             </p>
+            <span className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-[#E33337]">
+              <WrenchIcon className="h-3.5 w-3.5" />
+              Перейти к плану ТО
+            </span>
           </div>
         </div>
-      </div>
+      </Link>
 
       <CarFormSheet open={carSheet} onClose={() => setCarSheet(false)} />
       <MaintenanceFormSheet
