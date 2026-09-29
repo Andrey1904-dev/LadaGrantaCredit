@@ -13,8 +13,11 @@ import type { AuthApi, AuthUser, Backend, CarPatch, DataApi, LoanPatch } from '.
 
 /**
  * Локальный бэкенд на localStorage.
- * Используется, когда переменные VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
- * не заданы — приложение работает в демо-режиме с тем же API, что и Supabase.
+ *
+ * Используется в демо-режиме: либо когда переменные VITE_SUPABASE_* не заданы,
+ * либо когда пользователь сам нажал «Войти в демо-режим» (см. src/lib/index.ts).
+ * API полностью совпадает с Supabase-бэкендом, поэтому страницы не знают,
+ * с каким хранилищем работают.
  */
 
 const KEYS = {
@@ -23,10 +26,13 @@ const KEYS = {
   loan: 'lgc_loan',
   transactions: 'lgc_transactions',
   maintenance: 'lgc_maintenance',
-  seeded: 'lgc_seeded_v1',
+  seeded: 'lgc_seeded_v2',
 }
 
 export const DEMO_USER: AuthUser = { id: 'demo-user', email: 'demo@lada.ru' }
+
+/** Учётка демо-кабинета (пароль не проверяется — данные лежат в браузере) */
+export const DEMO_CREDENTIALS = { email: 'demo@lada.ru', password: 'demo' } as const
 
 const uid = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -43,26 +49,47 @@ function read<T>(key: string, fallback: T): T {
 }
 
 function write(key: string, value: unknown): void {
-  localStorage.setItem(key, JSON.stringify(value))
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    /* хранилище может быть переполнено или недоступно */
+  }
 }
 
 /* ---------- Начальные демо-данные ---------- */
 
-function seed(): void {
-  if (localStorage.getItem(KEYS.seeded)) return
+/** Детерминированный псевдослучайный генератор: демо выглядит одинаково при каждом сбросе */
+function rng(seed: number): () => number {
+  let s = seed
+  return () => {
+    s = (s * 1664525 + 1013904223) % 4294967296
+    return s / 4294967296
+  }
+}
+
+const DEMO_MILEAGE = 47_800
+const DEMO_MONTHS = 26 // автомобиль во владении ~2 года
+
+function buildDemoData(): {
+  car: Car
+  loan: Loan
+  transactions: Transaction[]
+  maintenance: MaintenanceRecord[]
+} {
   const now = new Date()
+  const random = rng(20_240_513)
 
   const car: Car = {
     id: uid(),
     user_id: DEMO_USER.id,
     plate_number: 'А 123 БВ 77',
     vin_number: 'XTA211500R1234567',
-    current_mileage: 18450,
+    current_mileage: DEMO_MILEAGE,
     initial_mileage: 12,
-    insurance_until: toDateInputValue(addMonths(now, 4)),
+    insurance_until: toDateInputValue(addMonths(now, 1)), // скоро истекает — виден индикатор
   }
 
-  const loanStart = addMonths(startOfMonth(now), -8)
+  const loanStart = addMonths(startOfMonth(now), -DEMO_MONTHS)
   loanStart.setDate(15)
   const loan: Loan = {
     id: uid(),
@@ -74,29 +101,28 @@ function seed(): void {
     start_date: toDateInputValue(loanStart),
   }
 
-  /* Транзакции за ~8 месяцев: кредит, топливо, страховка, ТО, прочее */
+  /* Транзакции за последние 12 месяцев: топливо, кредит, страховка, ТО, прочее */
   const txs: Transaction[] = []
-  let mileage = 1500
-  let cursor = addMonths(now, -8)
+  const historyMonths = 12
+  const kmPerMonth = 1_500
+  let mileage = DEMO_MILEAGE - historyMonths * kmPerMonth
+  let cursor = addMonths(now, -historyMonths)
 
   while (cursor <= now) {
-    // 2–3 заправки в месяц
-    const fills = 2 + (cursor.getMonth() % 2)
+    const fills = 3
     for (let i = 0; i < fills; i++) {
-      const d = new Date(cursor.getFullYear(), cursor.getMonth(), 3 + i * 9 + Math.floor(Math.random() * 4))
+      const d = new Date(cursor.getFullYear(), cursor.getMonth(), 4 + i * 9 + Math.floor(random() * 3))
       if (d > now) continue
-      mileage += 620 + Math.floor(Math.random() * 400)
-      if (mileage > car.current_mileage) mileage = car.current_mileage
+      mileage = Math.min(DEMO_MILEAGE, mileage + Math.round(kmPerMonth / fills + random() * 180))
       txs.push({
         id: uid(),
         user_id: DEMO_USER.id,
-        amount: 2450 + Math.floor(Math.random() * 900),
+        amount: 2_600 + Math.floor(random() * 900),
         category: 'fuel',
         date: d.toISOString(),
         mileage_at_transaction: mileage,
       })
     }
-    // платёж по кредиту 15-го числа
     const payDay = new Date(cursor.getFullYear(), cursor.getMonth(), 15)
     if (payDay <= now) {
       txs.push({
@@ -112,11 +138,13 @@ function seed(): void {
   }
 
   const extra: Array<[number, Transaction['category'], number, number | null]> = [
-    [12_400, 'insurance', -3, null],
-    [8_900, 'maintenance', -2, 15_020],
+    [13_800, 'insurance', -11, null],
+    [9_400, 'maintenance', -8, 30_400], // ТО-2
+    [4_900, 'maintenance', -5, 36_500], // стойки стабилизатора
+    [7_200, 'maintenance', -2, 41_000], // задние ступичные подшипники
     [1_500, 'other', -2, null],
     [900, 'other', -1, null],
-    [4_200, 'maintenance', -1, 17_300],
+    [6_400, 'other', -6, null], // сезонная смена шин + хранение
   ]
   for (const [amount, category, monthOffset, m] of extra) {
     const d = addMonths(now, monthOffset)
@@ -132,28 +160,72 @@ function seed(): void {
   }
   txs.sort((a, b) => b.date.localeCompare(a.date))
 
+  /**
+   * Журнал ТО демо-гаража. Формулировки намеренно совпадают с названиями
+   * регламентных работ (src/lib/service.ts) — по ним раздел «ТО» определяет,
+   * что и когда менялось, и считает остаток до следующей замены.
+   */
   const maintenance: MaintenanceRecord[] = [
     {
       id: uid(),
       user_id: DEMO_USER.id,
-      date: toDateInputValue(addMonths(now, -6)),
-      mileage: 7500,
-      description: 'ТО-0: замена масла двигателя и масляного фильтра',
+      date: toDateInputValue(addMonths(now, -24)),
+      mileage: 2_600,
+      description: 'ТО-0 (2 500 км): моторное масло и масляный фильтр, протяжка крепежа',
+    },
+    {
+      id: uid(),
+      user_id: DEMO_USER.id,
+      date: toDateInputValue(addMonths(now, -17)),
+      mileage: 15_200,
+      description:
+        'ТО-1 (15 000 км): моторное масло и масляный фильтр, салонный фильтр, воздушный фильтр, диагностика ходовой',
+    },
+    {
+      id: uid(),
+      user_id: DEMO_USER.id,
+      date: toDateInputValue(addMonths(now, -8)),
+      mileage: 30_400,
+      description:
+        'ТО-2 (30 000 км): моторное масло и масляный фильтр, воздушный фильтр, салонный фильтр, свечи зажигания, топливный фильтр',
+    },
+    {
+      id: uid(),
+      user_id: DEMO_USER.id,
+      date: toDateInputValue(addMonths(now, -5)),
+      mileage: 36_500,
+      description: 'Замена стоек стабилизатора (стук на мелких неровностях), развал-схождение',
     },
     {
       id: uid(),
       user_id: DEMO_USER.id,
       date: toDateInputValue(addMonths(now, -2)),
-      mileage: 15_020,
-      description: 'ТО-1: масло, фильтры, диагностика ходовой, замена свечей',
+      mileage: 41_000,
+      description: 'Замена задних ступичных подшипников (гул с 38 000 км)',
     },
   ]
+  maintenance.sort((a, b) => b.date.localeCompare(a.date))
 
+  return { car, loan, transactions: txs, maintenance }
+}
+
+function seed(force = false): void {
+  if (!force && localStorage.getItem(KEYS.seeded)) return
+  const { car, loan, transactions, maintenance } = buildDemoData()
   write(KEYS.car, car)
   write(KEYS.loan, loan)
-  write(KEYS.transactions, txs)
+  write(KEYS.transactions, transactions)
   write(KEYS.maintenance, maintenance)
-  localStorage.setItem(KEYS.seeded, '1')
+  try {
+    localStorage.setItem(KEYS.seeded, '1')
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Пересоздаёт демо-данные (кнопка «Сбросить демо-данные» в шапке) */
+export function resetDemoData(): void {
+  seed(true)
 }
 
 /* ---------- Auth ---------- */
@@ -163,7 +235,14 @@ const localAuth: AuthApi = {
     return localStorage.getItem(KEYS.session) ? DEMO_USER : null
   },
   async signIn() {
-    localStorage.setItem(KEYS.session, '1')
+    // Демо-кабинет открыт без проверки пароля: данные и так лежат только
+    // в этом браузере. Сид гарантирует, что кабинет не будет пустым.
+    seed()
+    try {
+      localStorage.setItem(KEYS.session, '1')
+    } catch {
+      /* приватный режим — сессия проживёт до перезагрузки */
+    }
     return DEMO_USER
   },
   async signUp() {
@@ -171,8 +250,8 @@ const localAuth: AuthApi = {
     // молча заходить в демо (как раньше) — обман пользователя,
     // поэтому явно отказываем.
     throw new Error(
-      'Регистрация недоступна: приложение собрано без ключей Supabase (демо-режим). ' +
-        'Укажите VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в .env или в секретах GitHub.',
+      'Регистрация недоступна: приложение работает в локальном демо-режиме. ' +
+        'Выйдите из демо или укажите VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY.',
     )
   },
   async signOut() {

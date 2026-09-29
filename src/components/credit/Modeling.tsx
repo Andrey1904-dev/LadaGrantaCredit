@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Field } from '../ui'
+import { Button, Card, Field, InfoTip } from '../ui'
 import { useAppData } from '../../context/AppDataContext'
 import { fmtMoney, parseLocaleNumber } from '../../utils/format'
 import {
@@ -315,11 +315,17 @@ function PdnCalculator() {
   return (
     <Card className="p-0 overflow-hidden">
       <div className="border-b border-[#363B43] bg-[#23272D]/60 px-4 py-3.5">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <PercentIcon className="h-4 w-4 text-[#E33337]" />
           <h3 className="font-display-num text-[16px] font-bold uppercase tracking-wide text-[#F3F4F4]">
             Показатель долговой нагрузки (ПДН)
           </h3>
+          <InfoTip title="ПДН">
+            ПДН = сумма всех ежемесячных платежей по кредитам ÷ ваш среднемесячный доход × 100 %.
+            Банк считает его сам по данным бюро кредитных историй и обязан учитывать с 2023 года:
+            при ПДН выше 50 % кредит выдают неохотно и с надбавкой к ставке, выше 80 % — почти
+            всегда отказ. До 30 % — комфортная зона, когда платёж не мешает жить.
+          </InfoTip>
         </div>
         <p className="mt-1 text-[12px] leading-relaxed text-[#A9AFB7]">
           Оценка доли ежемесячного дохода, уходящей на обслуживание всех кредитов (пороги ЦБ: 30% и 50%)

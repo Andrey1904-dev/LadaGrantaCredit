@@ -2,13 +2,15 @@
  * Smoke-тест рендера всех экранов без браузера.
  *
  * В песочнице нет Chromium, поэтому вместо скриншотов каждый маршрут
- * рендерится через react-dom/server — в двух состояниях: «пусто»
- * (онбординг и пустые состояния) и «с данными» (графики, таблицы, виджеты).
+ * рендерится через react-dom/server — в трёх состояниях: «с данными»
+ * (графики, таблицы, виджеты), «пустой аккаунт» (онбординг и пустые состояния)
+ * и «настоящие контексты» (реальные провайдеры, состояние загрузки).
  * Задача — поймать падения на этапе выполнения: битые импорты, отсутствующие
  * компоненты, несовпадение форм данных с разметкой.
  *
  * Запуск: npm run smoke  (собирает esbuild-бандл и выполняет его в Node)
  */
+import fs from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement as h, StrictMode } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -20,6 +22,7 @@ import DashboardPage from '../src/pages/DashboardPage.tsx';
 import CreditPage from '../src/pages/CreditPage.tsx';
 import ExpensesPage from '../src/pages/ExpensesPage.tsx';
 import GaragePage from '../src/pages/GaragePage.tsx';
+import ServicePage from '../src/pages/ServicePage.tsx';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -31,6 +34,7 @@ globalThis.localStorage = {
 globalThis.window = globalThis;
 globalThis.dispatchEvent = () => true;
 globalThis.addEventListener = () => {};
+globalThis.removeEventListener = () => {};
 globalThis.CustomEvent = class {
   constructor(type, init) {
     this.type = type;
@@ -43,10 +47,13 @@ const ROUTES = [
   ['/', DashboardPage, 'главная'],
   ['/credit', CreditPage, 'кредит'],
   ['/expenses', ExpensesPage, 'расходы'],
+  ['/service', ServicePage, 'то'],
   ['/garage', GaragePage, 'гараж'],
 ];
 
-const empty = process.argv.includes('--empty');
+const mode = (process.argv.find((a) => a.startsWith('--mode=')) ?? '--mode=data').slice(7);
+const label =
+  mode === 'empty' ? 'настоящие контексты' : mode === 'blank' ? 'пустой аккаунт' : 'с данными';
 
 let failed = 0;
 for (const [path, Page, name] of ROUTES) {
@@ -80,6 +87,11 @@ for (const [path, Page, name] of ROUTES) {
       .replace(/&#x27;|&quot;/g, "'")
       .replace(/\s+/g, ' ')
       .trim();
+    // SMOKE_DUMP=1 — выгрузить текст страниц (быстрая вычитка копирайта без браузера)
+    if (process.env.SMOKE_DUMP) {
+      fs.mkdirSync('node_modules/.tmp/dump', { recursive: true });
+      fs.writeFileSync(`node_modules/.tmp/dump/${name}.txt`, text.replace(/ · /g, '\n· '));
+    }
     console.log(
       `OK   ${path.padEnd(10)} ${name.padEnd(14)} ${String(html.length).padStart(6)} симв. | ${text.slice(0, 64)}`,
     );
@@ -91,7 +103,7 @@ for (const [path, Page, name] of ROUTES) {
 }
 console.log(
   failed
-    ? `\n${failed} экранов упало (${empty ? 'без данных' : 'с данными'})`
-    : `\nВсе экраны отрендерились без ошибок (${empty ? 'без данных' : 'с данными'})`,
+    ? `\n${failed} экранов упало (${label})`
+    : `\nВсе экраны отрендерились без ошибок (${label})`,
 );
 process.exit(failed ? 1 : 0);

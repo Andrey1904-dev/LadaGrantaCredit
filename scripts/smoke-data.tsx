@@ -40,17 +40,21 @@ export const DEMO_TX: Transaction[] = [
 ];
 
 export const DEMO_MAINT: MaintenanceRecord[] = [
-  { id: 'm1', user_id: 'u1', date: daysAgo(21).slice(0, 10), mileage: 46_800, description: 'Замена масла и фильтров, ТО-2' },
-  { id: 'm2', user_id: 'u1', date: daysAgo(120).slice(0, 10), mileage: 41_000, description: 'Замена тормозных колодок' },
+  { id: 'm1', user_id: 'u1', date: daysAgo(21).slice(0, 10), mileage: 46_800, description: 'ТО-3: моторное масло и масляный фильтр, воздушный фильтр, свечи зажигания' },
+  { id: 'm2', user_id: 'u1', date: daysAgo(120).slice(0, 10), mileage: 41_000, description: 'Замена передних тормозных колодок и тормозной жидкости' },
+  { id: 'm3', user_id: 'u1', date: daysAgo(320).slice(0, 10), mileage: 30_100, description: 'Ремень ГРМ с роликами и помпа, антифриз' },
 ];
 
 const noop = async () => {};
 
+/** SMOKE_BLANK=1 — «новый пользователь»: экраны должны показать пустые состояния, а не упасть */
+const blank = process.env.SMOKE_BLANK === '1';
+
 const appData = {
-  car: DEMO_CAR,
-  loan: DEMO_LOAN,
-  transactions: DEMO_TX,
-  maintenance: DEMO_MAINT,
+  car: blank ? null : DEMO_CAR,
+  loan: blank ? null : DEMO_LOAN,
+  transactions: blank ? [] : DEMO_TX,
+  maintenance: blank ? [] : DEMO_MAINT,
   loading: false,
   error: null,
   refresh: noop,
@@ -66,6 +70,8 @@ const auth = {
   user: { id: 'u1', email: 'owner@example.com' },
   loading: false,
   mode: 'demo' as const,
+  demoOnly: false,
+  backend: { mode: 'demo' as const },
   settings: null,
   signIn: noop,
   signUp: noop,

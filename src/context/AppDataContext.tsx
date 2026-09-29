@@ -3,11 +3,9 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import { getBackend } from '../lib'
 import type { CarPatch, LoanPatch } from '../lib/backend'
 import type {
   Car,
@@ -39,8 +37,9 @@ interface AppDataValue {
 const AppDataContext = createContext<AppDataValue | null>(null)
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
-  const backend = useMemo(() => getBackend(), [])
+  // бэкенд берём из AuthContext: при входе в демо-режим он меняется на лету,
+  // и данные обязаны читаться из того же хранилища, где выполнен вход
+  const { user, backend } = useAuth()
   const [car, setCar] = useState<Car | null>(null)
   const [loan, setLoan] = useState<Loan | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])

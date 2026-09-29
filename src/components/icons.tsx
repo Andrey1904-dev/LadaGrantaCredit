@@ -1,7 +1,20 @@
 import {
   AlertTriangle,
+  BadgeRussianRuble,
+  BarChart3,
+  Download,
+  FileText,
+  IdCard,
   ArrowUpRight,
+  Battery,
+  Bell,
   Calendar,
+  ChevronDown,
+  ClipboardList,
+  Clock,
+  Disc3,
+  Droplet,
+  History,
   CarFront,
   Check,
   ChevronRight,
@@ -18,9 +31,15 @@ import {
   Percent,
   Plus,
   RefreshCw,
+  Settings2,
   ShieldCheck,
+  Snowflake,
   Sparkles,
+  Sun,
+  Timer,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   Wallet,
   Wrench,
   X,
@@ -132,4 +151,80 @@ export const MailIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps)
 
 export const LockIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
   <Lock className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const DropletIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Droplet className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const TimerIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Timer className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const ClockIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Clock className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const ChecklistIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <ClipboardList className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const SnowIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Snowflake className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const SunIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Sun className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const BatteryIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Battery className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const TyreIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Disc3 className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const TrendIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <TrendingUp className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const SettingsIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Settings2 className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const ChevronDownIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <ChevronDown className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const BellIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Bell className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const HistoryIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <History className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const TrendDownIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <TrendingDown className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const ChartIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <BarChart3 className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const DocIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <FileText className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const LicenseIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <IdCard className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const TaxIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <BadgeRussianRuble className={base(className)} strokeWidth={strokeWidth} />
+)
+
+export const DownloadIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Download className={base(className)} strokeWidth={strokeWidth} />
 )
