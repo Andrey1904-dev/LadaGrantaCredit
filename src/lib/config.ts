@@ -12,7 +12,7 @@
  * Секретный service_role ключ сюда класть НЕЛЬЗЯ.
  */
 const FALLBACK_SUPABASE_URL = 'https://dcgurmwvpgzmlfivxoso.supabase.co'
-const FALLBACK_SUPABASE_ANON_KEY = ''
+const FALLBACK_SUPABASE_ANON_KEY = 'sb_publishable_R5w5GPMfKZSVrEohLPw1Mw_Ot79EMn8'
 
 const envUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? ''
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? ''

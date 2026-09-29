@@ -33,6 +33,11 @@ const supabaseAuth: AuthApi = {
     const { data, error } = await getSupabase().auth.signUp({ email, password })
     if (error) throw new Error(translateAuthError(error.message))
     if (!data.user) throw new Error('Не удалось создать аккаунт')
+    // При включённом подтверждении email Supabase не возвращает ошибку для уже
+    // существующего пользователя (защита от перебора), а отдаёт «пустого»
+    // пользователя без identities — распознаём этот случай явно.
+    if (!data.session && (data.user.identities?.length ?? 0) === 0)
+      throw new Error('Пользователь с таким email уже зарегистрирован. Войдите или восстановите пароль')
     return { user: toAuthUser(data.user)!, session: data.session !== null }
   },
   async signOut() {
@@ -52,7 +57,17 @@ function translateAuthError(msg: string): string {
   if (msg.includes('Password should be')) return 'Пароль должен содержать минимум 6 символов'
   if (msg.includes('Unable to validate email')) return 'Некорректный email'
   if (msg.includes('Email not confirmed'))
-    return 'Email не подтверждён. Проверьте почту или отключите подтверждение email в настройках Supabase Auth'
+    return 'Email не подтверждён. Перейдите по ссылке из письма, затем войдите'
+  if (msg.includes('Signups not allowed') || msg.includes('signup is disabled'))
+    return 'Регистрация отключена в настройках проекта Supabase'
+  if (msg.includes('email rate limit exceeded') || msg.includes('rate limit'))
+    return 'Слишком много писем за короткое время (лимит Supabase). Подождите час или отключите подтверждение email в Dashboard'
+  if (msg.includes('For security purposes'))
+    return 'Слишком частые попытки. Подождите минуту и попробуйте снова'
+  if (msg.includes('Error sending confirmation email') || msg.includes('error sending'))
+    return 'Supabase не смог отправить письмо подтверждения. Отключите Confirm email в Dashboard или настройте SMTP'
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
+    return 'Нет связи с сервером Supabase. Проверьте интернет и доступность проекта'
   return msg
 }
 
