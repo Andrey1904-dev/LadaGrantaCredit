@@ -1,31 +1,37 @@
 {
   "name": "lada-granta-credit",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
-  "description": "LADA Кредит & Гараж — учёт расходов, ТО и управление автокредитом для владельцев LADA Granta",
+  "description": "LADA Кредит & Гараж — личный кабинет владельца LADA Granta Sport: учёт расходов, ТО и управление автокредитом",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
+    "smoke": "node scripts/smoke-build.mjs && node scripts/smoke-build.mjs --empty",
+    "images": "node scripts/prepare-images.mjs",
     "supabase:auth": "node scripts/supabase-auth-setup.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
-    "chart.js": "^4.4.4",
-    "react": "^18.3.1",
-    "react-chartjs-2": "^5.2.0",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^6.30.0"
+    "@supabase/supabase-js": "^2.109.0",
+    "chart.js": "^4.5.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.48.0",
+    "react": "^19.2.0",
+    "react-chartjs-2": "^5.3.1",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.18.4",
+    "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.3",
-    "@types/react": "^18.3.10",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.2",
-    "tailwindcss": "^4.1.3",
-    "typescript": "~5.6.2",
-    "vite": "^5.4.8"
+    "@tailwindcss/vite": "^4.1.17",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.2"
   }
 }

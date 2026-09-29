@@ -8,7 +8,7 @@ interface SheetProps {
   children: ReactNode
 }
 
-/** Модальное окно в формате BottomSheet (снизу экрана) */
+/** Модальное окно в формате BottomSheet (снизу экрана на мобильном, по центру на десктопе) */
 export default function Sheet({ open, onClose, title, children }: SheetProps) {
   useEffect(() => {
     if (!open) return
@@ -24,22 +24,33 @@ export default function Sheet({ open, onClose, title, children }: SheetProps) {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <div
-        className="animate-fade-in absolute inset-0 bg-black/45"
+        className="animate-fade-in absolute inset-0 bg-black/75 backdrop-blur-[2px]"
         onClick={onClose}
-        aria-hidden
+        aria-hidden="true"
       />
-      <div className="animate-sheet-up relative max-h-[92dvh] w-full max-w-[480px] overflow-y-auto rounded-t-3xl bg-white px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3">
-        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-black/15" />
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-[17px] font-bold text-ink">{title}</h3>
+      <div className="animate-sheet-up relative max-h-[92dvh] w-full max-w-[500px] overflow-y-auto rounded-t-[14px] border-t border-[#363B43] bg-[#1A1D22] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 text-[#F3F4F4] sm:rounded-[12px] sm:border sm:pb-6">
+        <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#363B43] sm:hidden" />
+        <div className="mb-4 flex items-center justify-between border-b border-[#363B43]/70 pb-3">
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-1 rounded-full bg-[#E33337]" aria-hidden="true" />
+            <h3 className="font-display-num text-[18px] font-bold uppercase tracking-wide text-[#F3F4F4]">
+              {title}
+            </h3>
+          </div>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Закрыть"
-            className="rounded-full bg-card p-2 text-muted transition-colors hover:text-ink"
+            className="flex h-11 w-11 items-center justify-center rounded-[10px] border border-[#363B43] bg-[#23272D] text-[#A9AFB7] transition-colors hover:border-[#A9AFB7] hover:text-[#F3F4F4]"
           >
-            <CloseIcon className="h-4 w-4" />
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
         {children}
