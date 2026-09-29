@@ -55,7 +55,9 @@ npm run dev        # http://localhost:5173
 **Authentication → Sign In / Up → Email → Confirm email** в Dashboard.
 
 Если ключи убрать из `.env` — приложение работает в локальном **демо-режиме**
-(localStorage браузера).
+(localStorage браузера). В демо-режиме регистрация и вход по email отключены:
+на экране авторизации показывается предупреждение и кнопка входа в демо
+(молчаливый вход в демо при попытке регистрации — это баг, он исправлен).
 
 Типы схемы БД лежат в `src/types/database.types.ts` (формат `supabase gen types typescript`).
 
@@ -63,7 +65,8 @@ npm run dev        # http://localhost:5173
 
 1. В настройках репозитория: **Settings → Pages → Source = GitHub Actions**.
 2. Добавьте секреты в **Settings → Secrets and variables → Actions** —
-   без них Pages-сборка уйдёт в демо-режим:
+   без них деплой **упадёт с понятной ошибкой** (шаг «Проверить ключи Supabase»),
+   чтобы на Pages не опубликовалась сборка без работающей регистрации:
    - `VITE_SUPABASE_URL` = `https://dcgurmwvpgzmlfivxoso.supabase.co`
    - `VITE_SUPABASE_ANON_KEY` = publishable-ключ проекта
 3. Запушьте в `main` — workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
