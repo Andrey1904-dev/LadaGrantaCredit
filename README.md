@@ -64,11 +64,25 @@ npm run dev        # http://localhost:5173
 ## Деплой на GitHub Pages
 
 1. В настройках репозитория: **Settings → Pages → Source = GitHub Actions**.
-2. Добавьте секреты в **Settings → Secrets and variables → Actions** —
-   без них деплой **упадёт с понятной ошибкой** (шаг «Проверить ключи Supabase»),
-   чтобы на Pages не опубликовалась сборка без работающей регистрации:
-   - `VITE_SUPABASE_URL` = `https://dcgurmwvpgzmlfivxoso.supabase.co`
-   - `VITE_SUPABASE_ANON_KEY` = publishable-ключ проекта
+2. Добавьте секрет `VITE_SUPABASE_ANON_KEY` в
+   **Settings → Secrets and variables → Actions → вкладка Secrets → New repository secret**:
+   - Name: `VITE_SUPABASE_ANON_KEY`
+   - Secret: publishable (anon) ключ проекта —
+     Supabase Dashboard → Project Settings → API → Project API keys → `anon` / `publishable`
+     (длинная строка, начинается с `eyJ…`)
+
+   `VITE_SUPABASE_URL` задавать не обязательно: если секрета нет, workflow
+   использует адрес проекта по умолчанию (`https://dcgurmwvpgzmlfivxoso.supabase.co`,
+   он публичный). Хотите переопределить — создайте секрет/variable `VITE_SUPABASE_URL`;
+   anon-ключ тоже можно положить во вкладку **Variables** — workflow смотрит оба места.
+
+   > ⚠️ Именно **New repository secret** в разделе «Secrets and variables».
+   > Раздел **Settings → Environments** — это другое: секреты внутри окружений
+   > не появляются в списке секретов и **не видны job'у сборки**, из-за чего
+   > деплой уйдёт в демо-режим (или упадёт на проверке ключей).
+
+   Без ключей деплой **упадёт с понятной ошибкой** (шаг «Проверить ключи Supabase»),
+   чтобы на Pages не опубликовалась сборка без работающей регистрации.
 3. Запушьте в `main` — workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
    соберёт `dist` (с `base: '/LadaGrantaCredit/'`) и опубликует на Pages.
 
