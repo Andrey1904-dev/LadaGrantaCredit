@@ -24,6 +24,12 @@ import {
 } from '../src/lib/service'
 import { TAX_REGIONS, taxDueDate, taxRateFor, transportTax } from '../src/lib/tax'
 import { DEFAULT_SETTINGS, readSettings, writeSettings } from '../src/lib/settings'
+import {
+  START_STEPS,
+  WARRANTY_ITEMS,
+  fuelGrade,
+  warrantyLeft,
+} from '../src/lib/ownership'
 import { buildBackup, buildExpensesCsv, buildMaintenanceCsv } from '../src/lib/backup'
 import { DEMO_CREDENTIALS, createLocalBackend, resetDemoData } from '../src/lib/local'
 import type { MaintenanceRecord, Transaction } from '../src/types/domain'
@@ -612,5 +618,81 @@ describe('демо-данные согласованы с разделом ТО'
     assert.ok(monthlyMileage(txs))
     const series = monthlySeries(txs, 12)
     assert.ok(series.filter((p) => p.total > 0).length >= 6, 'история должна покрывать год')
+  })
+})
+
+describe('после покупки: чек-лист, гарантия, справочник', () => {
+  it('чек-лист собран без дублей и с понятными группами', () => {
+    const ids = START_STEPS.map((s) => s.id)
+    assert.equal(new Set(ids).size, ids.length, 'id пунктов должны быть уникальными')
+    assert.ok(START_STEPS.length >= 15, `пунктов: ${START_STEPS.length}`)
+    for (const step of START_STEPS) {
+      assert.ok(['law', 'service', 'upgrade'].includes(step.kind), step.id)
+      assert.ok(step.when.length > 0 && step.detail.length > 20, step.id)
+      if (step.cost) assert.ok(step.cost[1] >= step.cost[0], step.id)
+    }
+    // юридические сроки и обкатка — обязательные пункты
+    assert.ok(ids.includes('register'))
+    assert.ok(ids.includes('osago'))
+    assert.ok(ids.includes('break-in'))
+    assert.ok(ids.includes('first-oil'))
+  })
+
+  it('гарантия: без даты покупки считать не от чего', () => {
+    const car = WARRANTY_ITEMS[0]
+    assert.equal(warrantyLeft(car, null, 10_000), null)
+    assert.equal(warrantyLeft(car, 'не дата', 10_000), null)
+  })
+
+  it('гарантия на автомобиль: 3 года или 100 000 км, что раньше', () => {
+    const car = WARRANTY_ITEMS.find((w) => w.id === 'car')!
+    assert.equal(car.months, 36)
+    assert.equal(car.km, 100_000)
+
+    const year = new Date()
+    year.setFullYear(year.getFullYear() - 1)
+    const iso = year.toISOString().slice(0, 10)
+
+    const fresh = warrantyLeft(car, iso, 30_000)!
+    assert.equal(fresh.monthsLeft, 24)
+    assert.equal(fresh.kmLeft, 70_000)
+    assert.equal(fresh.expired, false)
+    near(fresh.used, 1 / 3, 0.02) // по времени 12/36 больше, чем по пробегу 30/100
+
+    // перепробег закрывает гарантию раньше срока
+    const overrun = warrantyLeft(car, iso, 120_000)!
+    assert.equal(overrun.expired, true)
+    assert.equal(overrun.used, 1)
+
+    // начальный пробег не засчитывается (машина куплена не новой)
+    const used = warrantyLeft(car, iso, 120_000, 100_000)!
+    assert.equal(used.kmLeft, 80_000)
+    assert.equal(used.expired, false)
+  })
+
+  it('гарантия истекает по времени', () => {
+    const shocks = WARRANTY_ITEMS.find((w) => w.id === 'shocks')!
+    const old = new Date()
+    old.setFullYear(old.getFullYear() - 3)
+    const left = warrantyLeft(shocks, old.toISOString().slice(0, 10), 10_000)!
+    assert.ok(left.monthsLeft < 0)
+    assert.equal(left.expired, true)
+  })
+
+  it('мотор Granta Sport и рекомендованный бензин', () => {
+    const sport = engineInfo('21127-95')
+    assert.equal(sport.power, 118)
+    assert.equal(sport.valves, 16)
+    assert.equal(fuelGrade('21127-95'), 'АИ-95')
+    assert.equal(fuelGrade('11182'), 'АИ-92 или АИ-95')
+    // налог для Sport в Москве: 118 л.с. попадает в ставку 31 ₽
+    assert.equal(transportTax(sport.power, taxRateFor('msk', sport.power)), 118 * 31)
+  })
+
+  it('чек-лист сохраняется в настройках', () => {
+    resetStorage()
+    assert.deepEqual(DEFAULT_SETTINGS.startChecklist, [])
+    writeSettings({ startChecklist: ['register', 'osago'] })
+    assert.deepEqual(readSettings().startChecklist, ['register', 'osago'])
   })
 })

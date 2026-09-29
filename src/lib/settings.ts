@@ -38,6 +38,8 @@ export interface AppSettings {
   taxRegion: string
   /** Своя ставка ₽/л.с., если региона нет в списке */
   taxRateOverride: number | null
+  /** Отмеченные пункты чек-листа «после покупки» (id из START_STEPS) */
+  startChecklist: string[]
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   licenseUntil: null,
   taxRegion: DEFAULT_TAX_REGION,
   taxRateOverride: null,
+  startChecklist: [],
 }
 
 const KEY = 'lgc_settings_v1'

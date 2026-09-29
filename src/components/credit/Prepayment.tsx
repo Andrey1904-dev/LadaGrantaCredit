@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Card, EmptyState, Field, SectionTitle } from '../ui'
+import { Card, EmptyState, Field, InfoTip, SectionTitle } from '../ui'
 import { CardIcon, CheckIcon, SparklesIcon, TrendDownIcon } from '../icons'
 import { useAppData } from '../../context/AppDataContext'
 import { addMonths } from '../../utils/date'
@@ -125,9 +125,17 @@ export default function Prepayment() {
         </div>
 
         <div>
-          <p className="mb-1.5 text-[12.5px] font-semibold text-[#A9AFB7]">
-            Что пересчитывает банк
-          </p>
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+            <p className="text-[12.5px] font-semibold text-[#A9AFB7]">Что пересчитывает банк</p>
+            <InfoTip title="Сократить срок или уменьшить платёж">
+              При досрочном погашении вы выбираете, что банк пересчитает. «Сократить срок» —
+              платёж остаётся прежним, но месяцев до конца кредита становится меньше: проценты
+              начисляются на остаток, поэтому выгода почти всегда больше. «Уменьшить платёж» —
+              срок тот же, а ежемесячная нагрузка падает: удобно, если тяжело платить.
+              Заявление подаётся к дате очередного платежа, досрочное погашение — ваше право по
+              ст. 809–810 ГК РФ, комиссий за него быть не должно.
+            </InfoTip>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {(
               [
@@ -184,7 +192,17 @@ export default function Prepayment() {
             </div>
           </Card>
 
-          <SectionTitle>Сравнение вариантов</SectionTitle>
+          <SectionTitle
+            tip={
+              <>
+                Обе карточки считаются от одного и того же остатка долга и вашей ставки.
+                «Экономия» — это разница процентов с графиком без досрочных платежей: сколько
+                денег останется у вас, а не у банка.
+              </>
+            }
+          >
+            Сравнение вариантов
+          </SectionTitle>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <PlanCard
               title="Сократить срок"

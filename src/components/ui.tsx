@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  useState,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
@@ -95,22 +96,91 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
   )
 })
 
+/** Кружок «?» — одинаковый для подсказок в карточках и в заголовках секций */
+function TipButton({
+  open,
+  title,
+  onClick,
+}: {
+  open: boolean
+  title: string
+  onClick(): void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={open}
+      aria-label={open ? `Скрыть пояснение: ${title}` : `Что это: ${title}`}
+      title={`Что это: ${title}`}
+      className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold leading-none transition-colors ${
+        open
+          ? 'border-[#E33337] bg-[#E33337]/15 text-[#E33337]'
+          : 'border-[#4A5058] text-[#A9AFB7] hover:border-[#A9AFB7] hover:text-[#F3F4F4]'
+      }`}
+    >
+      ?
+    </button>
+  )
+}
+
+/** Пояснение, которое раскрывается под строкой */
+function TipText({ children }: { children: ReactNode }) {
+  return (
+    <p className="mt-1.5 w-full rounded-[8px] border border-[#363B43] bg-[#0E1013] px-2.5 py-2 text-[11.5px] leading-relaxed text-[#A9AFB7]">
+      {children}
+    </p>
+  )
+}
+
+/**
+ * Кнопка-подсказка «?»: раскрывает пояснение к термину прямо под строкой.
+ * Нужна там, где в интерфейсе стоят сокращения и отраслевые метрики
+ * (ПДН, ₽/км, «оценка по пробегу», прогноз) — чтобы владельцу не приходилось
+ * гадать, что именно посчитало приложение и откуда взялась цифра.
+ *
+ * Родителю нужен `flex-wrap`, иначе пояснению негде развернуться.
+ */
+export function InfoTip({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <TipButton open={open} title={title} onClick={() => setOpen((v) => !v)} />
+      {open && <TipText>{children}</TipText>}
+    </>
+  )
+}
+
 export function SectionTitle({
   children,
   action,
+  tip,
 }: {
   children: ReactNode
   action?: ReactNode
+  /** Пояснение к разделу: рядом с заголовком появится кружок «?» */
+  tip?: ReactNode
 }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="mb-2.5 mt-6 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2">
-        <span className="h-4 w-1 rounded-full bg-[#E33337]" aria-hidden="true" />
-        <h2 className="font-display-num text-[16px] font-semibold uppercase tracking-wide text-[#F3F4F4]">
-          {children}
-        </h2>
+    <div className="mb-2.5 mt-6">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="h-4 w-1 shrink-0 rounded-full bg-[#E33337]" aria-hidden="true" />
+          <h2 className="font-display-num truncate text-[16px] font-semibold uppercase tracking-wide text-[#F3F4F4]">
+            {children}
+          </h2>
+          {tip && (
+            <TipButton
+              open={open}
+              title={typeof children === 'string' ? children : 'раздел'}
+              onClick={() => setOpen((v) => !v)}
+            />
+          )}
+        </div>
+        {action}
       </div>
-      {action}
+      {tip && open && <TipText>{tip}</TipText>}
     </div>
   )
 }

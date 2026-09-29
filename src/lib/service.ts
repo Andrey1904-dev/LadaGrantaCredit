@@ -22,7 +22,7 @@ import type { PlanMode } from './settings'
 /*  Двигатели                                                          */
 /* ------------------------------------------------------------------ */
 
-export type EngineId = '11182' | '11186' | '21127' | '21129' | '21179'
+export type EngineId = '11182' | '11186' | '21127' | '21127-95' | '21129' | '21179'
 
 export interface EngineInfo {
   id: EngineId
@@ -62,6 +62,15 @@ export const ENGINES: EngineInfo[] = [
     power: 106,
     bendsValves: true,
     note: 'Гидрокомпенсаторы: цокот на холодную — повод проверить масло и его интервал.',
+  },
+  {
+    id: '21127-95',
+    label: 'ВАЗ-21127-95 · 1.6 16V · 118 л.с. (Sport)',
+    short: '1.6 16V Sport (21127-95)',
+    valves: 16,
+    power: 118,
+    bendsValves: true,
+    note: 'Мотор Granta Sport: облегчённый впуск-выпуск, спортивный распредвал, своя прошивка. Только АИ-95 — степень сжатия 11.',
   },
   {
     id: '21129',
