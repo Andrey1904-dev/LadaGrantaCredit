@@ -133,3 +133,13 @@ create policy "maintenance: own rows read"   on public.maintenance for select us
 create policy "maintenance: own rows insert" on public.maintenance for insert with check (auth.uid() = user_id);
 create policy "maintenance: own rows update" on public.maintenance for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "maintenance: own rows delete" on public.maintenance for delete using (auth.uid() = user_id);
+
+-- ============================================================================
+-- Backfill: если вы зарегистрировали аккаунт ДО применения этого скрипта,
+-- триггер handle_new_user по нему не отработал — создаём профили вручную
+-- для всех уже существующих пользователей.
+-- ============================================================================
+insert into public.profiles (id, email)
+select id, coalesce(email, '')
+from auth.users
+on conflict (id) do nothing;

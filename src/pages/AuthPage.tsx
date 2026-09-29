@@ -26,8 +26,15 @@ export default function AuthPage() {
     setBusy(true)
     try {
       if (isRegister) {
-        await signUp(email, password)
-        setNotice('Аккаунт создан. Если включено подтверждение email — проверьте почту.')
+        const result = await signUp(email, password)
+        if (!result.session) {
+          // Supabase требует подтверждения email
+          setNotice(
+            `Аккаунт создан! Мы отправили письмо со ссылкой подтверждения на ${email}. Подтвердите email и войдите.`,
+          )
+          setIsRegister(false)
+          setPassword('')
+        }
       } else {
         await signIn(email, password)
       }

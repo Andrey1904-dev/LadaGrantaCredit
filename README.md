@@ -31,32 +31,41 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-### Подключение Supabase (опционально)
+### Подключение Supabase
 
-Без ключей приложение работает в **демо-режиме** (данные — в localStorage браузера).
-Для полноценной работы:
+Проект уже подключён к Supabase (`.env` содержит `VITE_SUPABASE_URL` и
+`VITE_SUPABASE_ANON_KEY`; файл не коммитится).
 
-1. Создайте проект на [supabase.com](https://supabase.com).
-2. Выполните SQL из [`supabase/schema.sql`](supabase/schema.sql) в SQL Editor
-   (таблицы `profiles`, `cars`, `loans`, `transactions`, `maintenance` + RLS-политики).
-3. Скопируйте `.env.example` в `.env` и подставьте ключи
-   (Project Settings → API):
+**Осталось применить схему БД (одно действие, ~1 минута):**
 
-   ```env
-   VITE_SUPABASE_URL=https://<project-ref>.supabase.co
-   VITE_SUPABASE_ANON_KEY=<anon-public-key>
-   ```
+1. Откройте [Supabase Dashboard](https://supabase.com/dashboard/project/dcgurmwvpgzmlfivxoso/sql/new)
+   → **SQL Editor** → New query.
+2. Вставьте содержимое [`supabase/schema.sql`](supabase/schema.sql) и нажмите **Run**.
+3. Готово: таблицы `profiles`, `cars`, `loans`, `transactions`, `maintenance`
+   с RLS-политиками и триггером профиля созданы. Приложение подхватит их
+   автоматически (в шапке есть кнопка «Повторить»).
 
-4. Для входа без подтверждения почты отключите
-   Authentication → Providers → Email → **Confirm email**.
+> ⚠️ DDL нельзя выполнить через publishable-ключ — только владелец проекта
+> в Dashboard (или через `psql`/Management API). Publishable/anon-ключи
+> по задумке Supabase имеют доступ только к данным, не к схеме.
+
+**Email-подтверждение:** в проекте включено (`mailer_autoconfirm: false`).
+После регистрации приложение попросит подтвердить email по ссылке из письма.
+Для мгновенного входа без писем отключите
+**Authentication → Sign In / Up → Email → Confirm email** в Dashboard.
+
+Если ключи убрать из `.env` — приложение работает в локальном **демо-режиме**
+(localStorage браузера).
 
 Типы схемы БД лежат в `src/types/database.types.ts` (формат `supabase gen types typescript`).
 
 ## Деплой на GitHub Pages
 
 1. В настройках репозитория: **Settings → Pages → Source = GitHub Actions**.
-2. (Опционально) Добавьте секреты `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY`
-   в **Settings → Secrets and variables → Actions**.
+2. Добавьте секреты в **Settings → Secrets and variables → Actions** —
+   без них Pages-сборка уйдёт в демо-режим:
+   - `VITE_SUPABASE_URL` = `https://dcgurmwvpgzmlfivxoso.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY` = publishable-ключ проекта
 3. Запушьте в `main` — workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
    соберёт `dist` (с `base: '/LadaGrantaCredit/'`) и опубликует на Pages.
 

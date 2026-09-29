@@ -1,13 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { getBackend } from '../lib'
-import type { AuthUser } from '../lib/backend'
+import type { AuthUser, SignUpResult } from '../lib/backend'
 
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
   mode: 'supabase' | 'demo'
   signIn(email: string, password: string): Promise<void>
-  signUp(email: string, password: string): Promise<void>
+  signUp(email: string, password: string): Promise<SignUpResult>
   signOut(): Promise<void>
   enterDemo(): Promise<void>
 }
@@ -45,7 +45,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(await backend.auth.signIn(email, password))
     },
     async signUp(email, password) {
-      setUser(await backend.auth.signUp(email, password))
+      const result = await backend.auth.signUp(email, password)
+      // если в проекте включено подтверждение email, сессии пока нет —
+      // пользователя пускаем в приложение только после подтверждения и входа
+      if (result.session) setUser(result.user)
+      return result
     },
     async signOut() {
       await backend.auth.signOut()

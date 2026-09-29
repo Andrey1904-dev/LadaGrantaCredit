@@ -25,6 +25,8 @@ interface AppDataValue {
   transactions: Transaction[]
   maintenance: MaintenanceRecord[]
   loading: boolean
+  /** Ошибка загрузки данных (например, таблицы ещё не созданы в Supabase) */
+  error: string | null
   refresh(): Promise<void>
   saveCar(patch: CarPatch): Promise<Car>
   saveLoan(patch: Required<LoanPatch>): Promise<Loan>
@@ -44,11 +46,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [maintenance, setMaintenance] = useState<MaintenanceRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     if (!user) return
     setLoading(true)
     try {
+      // гарантируем профиль (если пользователь создан до применения схемы)
+      await backend.data.ensureProfile(user).catch(() => {})
       const [c, l, tx, m] = await Promise.all([
         backend.data.getCar(user.id),
         backend.data.getLoan(user.id),
@@ -59,6 +64,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setLoan(l)
       setTransactions(tx)
       setMaintenance(m)
+      setError(null)
+    } catch (e) {
+      setError(describeDataError(e))
     } finally {
       setLoading(false)
     }
@@ -73,6 +81,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       setTransactions([])
       setMaintenance([])
       setLoading(false)
+      setError(null)
     }
   }, [user, refresh])
 
@@ -82,6 +91,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     transactions,
     maintenance,
     loading,
+    error,
 
     refresh,
 
@@ -135,4 +145,19 @@ export function useAppData(): AppDataValue {
   const ctx = useContext(AppDataContext)
   if (!ctx) throw new Error('useAppData должен использоваться внутри AppDataProvider')
   return ctx
+}
+
+/** Переводит ошибки PostgREST/сети в понятные сообщения */
+function describeDataError(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e)
+  if (msg.includes('schema cache') || msg.includes('PGRST205') || msg.includes('does not exist')) {
+    return 'Таблицы в базе данных ещё не созданы. Выполните скрипт supabase/schema.sql в SQL Editor вашего проекта Supabase, затем нажмите «Повторить».'
+  }
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+    return 'Нет соединения с Supabase. Проверьте интернет и попробуйте снова.'
+  }
+  if (msg.includes('JWT')) {
+    return 'Сессия истекла. Выйдите из аккаунта и войдите снова.'
+  }
+  return msg
 }

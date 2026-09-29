@@ -5,10 +5,16 @@ export interface AuthUser {
   email: string
 }
 
+export interface SignUpResult {
+  user: AuthUser
+  /** false — требуется подтверждение email, сессия ещё не создана */
+  session: boolean
+}
+
 export interface AuthApi {
   getUser(): Promise<AuthUser | null>
   signIn(email: string, password: string): Promise<AuthUser>
-  signUp(email: string, password: string): Promise<AuthUser>
+  signUp(email: string, password: string): Promise<SignUpResult>
   signOut(): Promise<void>
   onChange(cb: (user: AuthUser | null) => void): () => void
 }
@@ -30,6 +36,10 @@ export interface LoanPatch {
 }
 
 export interface DataApi {
+  /** Гарантирует наличие строки профиля (нужно, если пользователь
+      зарегистрировался до создания схемы — триггер по нему не отработал) */
+  ensureProfile(user: AuthUser): Promise<void>
+
   getCar(uid: string): Promise<Car | null>
   createCar(uid: string, data: CarPatch): Promise<Car>
   updateCar(id: string, data: CarPatch): Promise<Car>

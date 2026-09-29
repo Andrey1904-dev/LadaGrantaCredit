@@ -33,7 +33,7 @@ const supabaseAuth: AuthApi = {
     const { data, error } = await getSupabase().auth.signUp({ email, password })
     if (error) throw new Error(translateAuthError(error.message))
     if (!data.user) throw new Error('Не удалось создать аккаунт')
-    return toAuthUser(data.user)!
+    return { user: toAuthUser(data.user)!, session: data.session !== null }
   },
   async signOut() {
     await getSupabase().auth.signOut()
@@ -57,6 +57,13 @@ function translateAuthError(msg: string): string {
 }
 
 const supabaseData: DataApi = {
+  async ensureProfile(user: AuthUser) {
+    // idempotent: INSERT ... ON CONFLICT DO NOTHING (ignoreDuplicates)
+    await getSupabase()
+      .from('profiles')
+      .upsert({ id: user.id, email: user.email }, { ignoreDuplicates: true })
+  },
+
   async getCar(uid) {
     const { data, error } = await getSupabase()
       .from('cars')

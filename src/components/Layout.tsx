@@ -1,7 +1,8 @@
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useAppData } from '../context/AppDataContext'
 import BottomNav from './BottomNav'
-import { LogoutIcon } from './icons'
+import { InfoIcon, LogoutIcon } from './icons'
 
 /**
  * Мобильный каркас приложения: на десктопе интерфейс центрируется
@@ -9,6 +10,7 @@ import { LogoutIcon } from './icons'
  */
 export default function Layout() {
   const { signOut, mode, user } = useAuth()
+  const { error, refresh } = useAppData()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -39,6 +41,24 @@ export default function Layout() {
           <LogoutIcon className="h-5 w-5" />
         </button>
       </header>
+
+      {/* Баннер ошибки БД (например, таблицы ещё не созданы) */}
+      {error && (
+        <div className="border-b border-warning/30 bg-warning/10 px-4 py-3">
+          <div className="flex items-start gap-2.5">
+            <InfoIcon className="mt-0.5 h-4.5 w-4.5 shrink-0 text-[#9a6700]" />
+            <div className="flex-1">
+              <p className="text-[12.5px] leading-relaxed text-[#9a6700]">{error}</p>
+              <button
+                onClick={() => void refresh()}
+                className="mt-1.5 rounded-lg bg-[#9a6700]/10 px-2.5 py-1 text-[12px] font-semibold text-[#9a6700] transition-colors hover:bg-[#9a6700]/20"
+              >
+                Повторить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex-1 px-4 pb-28 pt-4">
         <Outlet />

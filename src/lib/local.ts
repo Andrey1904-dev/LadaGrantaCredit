@@ -168,7 +168,7 @@ const localAuth: AuthApi = {
   },
   async signUp() {
     localStorage.setItem(KEYS.session, '1')
-    return DEMO_USER
+    return { user: DEMO_USER, session: true }
   },
   async signOut() {
     localStorage.removeItem(KEYS.session)
@@ -181,6 +181,10 @@ const localAuth: AuthApi = {
 /* ---------- Data ---------- */
 
 const localData: DataApi = {
+  async ensureProfile() {
+    /* в демо-режиме профиль не нужен */
+  },
+
   async getCar() {
     return read<Car | null>(KEYS.car, null)
   },
