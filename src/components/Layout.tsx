@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAppData } from '../context/AppDataContext'
 import { resetDemoData } from '../lib/local'
@@ -13,6 +13,7 @@ export default function Layout() {
   const { signOut, mode, user } = useAuth()
   const { error, refresh } = useAppData()
   const navigate = useNavigate()
+  const location = useLocation()
   const isDemo = mode === 'demo'
 
   const handleLogout = async () => {
@@ -34,8 +35,9 @@ export default function Layout() {
         <div className="mx-auto flex max-w-[960px] items-center justify-between gap-3 px-4 py-2.5">
           <div className="flex items-center gap-3">
             <img
-              src="./favicon.svg"
+              src="./logo.png"
               alt="Эмблема кабинета LADA Granta Sport"
+              title="«Можно, а зачем?» — а мы уже сделали"
               className="h-9 w-9 shrink-0 rounded-[8px] border border-[#363B43]"
             />
             <div className="leading-tight">
@@ -128,9 +130,11 @@ export default function Layout() {
         )}
       </header>
 
-      {/* Рабочая область */}
+      {/* Рабочая область: анимированный переход между разделами */}
       <main className="mx-auto w-full max-w-[960px] flex-1 px-4 pb-28 pt-4">
-        <Outlet />
+        <div key={location.pathname} className="animate-page-enter">
+          <Outlet />
+        </div>
 
         <footer className="mt-10 border-t border-[#363B43]/50 pt-4 text-center text-[11px] leading-relaxed text-[#A9AFB7]/75">
           Личный кабинет владельца автомобиля (концепт в эстетике LADA Granta Sport). Не является официальным сервисом АО «АВТОВАЗ».

@@ -2,6 +2,7 @@ import {
   forwardRef,
   useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -13,12 +14,15 @@ import { GRANTA_ASSETS } from '../lib/assets'
 export function Card({
   children,
   className = '',
+  style,
 }: {
   children: ReactNode
   className?: string
+  style?: CSSProperties
 }) {
   return (
     <div
+      style={style}
       className={`rounded-[10px] border border-[#363B43]/85 bg-[#1A1D22] p-4 text-[#F3F4F4] ${className}`}
     >
       {children}

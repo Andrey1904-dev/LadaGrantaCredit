@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppDataProvider } from './context/AppDataContext'
 import Layout from './components/Layout'
+import SplashScreen from './components/SplashScreen'
 import { Spinner } from './components/ui'
 import AuthPage from './pages/AuthPage'
 import DashboardPage from './pages/DashboardPage'
@@ -38,6 +39,7 @@ export default function App() {
     // HashRouter — для корректной работы роутинга на GitHub Pages без 404-хака
     <HashRouter>
       <AuthProvider>
+        <SplashScreen />
         <Routes>
           <Route
             path="/auth"

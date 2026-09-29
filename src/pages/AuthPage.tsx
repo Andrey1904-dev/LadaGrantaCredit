@@ -136,7 +136,7 @@ export default function AuthPage() {
   const mailLink = webmailUrl(pendingEmail || check.email)
 
   return (
-    <div className="min-h-dvh w-full bg-[#0E1013] text-[#F3F4F4]">
+    <div className="animate-page-enter min-h-dvh w-full bg-[#0E1013] text-[#F3F4F4]">
       <div className="mx-auto grid min-h-dvh max-w-[1040px] grid-cols-1 lg:grid-cols-12 lg:items-center lg:gap-8 lg:px-6 lg:py-8">
         {/* Левая / верхняя колонка: Hero-кадр серой Granta Sport на мосту + макро-деталь шильдика SPORT */}
         <div className="lg:col-span-7">
