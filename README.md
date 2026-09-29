@@ -62,8 +62,12 @@ npm run dev        # http://localhost:5173
 ## Деплой на GitHub Pages
 
 1. В настройках репозитория: **Settings → Pages → Source = GitHub Actions**.
-2. Добавьте секреты в **Settings → Secrets and variables → Actions** —
-   без них Pages-сборка уйдёт в демо-режим:
+2. Задайте ключи одним из двух способов (иначе Pages-сборка уйдёт в демо-режим
+   и регистрация не будет создавать настоящий аккаунт):
+   - **Секреты репозитория** — **Settings → Secrets and variables → Actions**;
+   - **или** впишите их как значения по умолчанию в `src/lib/config.ts`
+     (`FALLBACK_SUPABASE_URL` / `FALLBACK_SUPABASE_ANON_KEY`) — anon-ключ
+     публичный, доступ к данным ограничивает RLS.
    - `VITE_SUPABASE_URL` = `https://dcgurmwvpgzmlfivxoso.supabase.co`
    - `VITE_SUPABASE_ANON_KEY` = publishable-ключ проекта
 3. Запушьте в `main` — workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)

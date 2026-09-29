@@ -23,6 +23,16 @@ export default function AuthPage() {
       setError('Пароль должен содержать минимум 6 символов')
       return
     }
+    if (mode === 'demo') {
+      // Без ключей Supabase настоящей регистрации нет: раньше форма молча
+      // пускала в демо-режим, и казалось, что аккаунт создан.
+      setError(
+        isRegister
+          ? 'Регистрация недоступна: сервер (Supabase) не подключён к этой сборке. Данные можно посмотреть только в демо-режиме — кнопка ниже.'
+          : 'Вход недоступен: сервер (Supabase) не подключён к этой сборке. Доступен только демо-режим — кнопка ниже.',
+      )
+      return
+    }
     setBusy(true)
     try {
       if (isRegister) {
@@ -103,12 +113,14 @@ export default function AuthPage() {
 
       {mode === 'demo' && (
         <div className="pb-8">
-          <div className="mb-3 rounded-2xl bg-card px-4 py-3 text-[12px] leading-relaxed text-muted">
-            Supabase не настроен (нет ключей в <code>.env</code>) — приложение работает в демо-режиме,
-            данные хранятся локально в браузере.
+          <div className="mb-3 rounded-2xl bg-warning/10 px-4 py-3 text-[12px] leading-relaxed text-muted">
+            <b className="text-ink">Сервер не подключён.</b> В этой сборке нет ключей Supabase
+            (<code>VITE_SUPABASE_URL</code> / <code>VITE_SUPABASE_ANON_KEY</code>), поэтому создать
+            настоящий аккаунт нельзя. Доступен только демо-режим: данные хранятся локально в браузере
+            и не синхронизируются между устройствами.
           </div>
           <Button variant="secondary" className="w-full" onClick={() => void enterDemo()}>
-            Войти в демо-режим
+            Продолжить в демо-режиме
           </Button>
         </div>
       )}
