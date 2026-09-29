@@ -9,6 +9,16 @@ export interface SignUpResult {
   user: AuthUser
   /** false — требуется подтверждение email, сессия ещё не создана */
   session: boolean
+  /** true — письмо с подтверждением было отправлено этой регистрацией */
+  confirmationSent: boolean
+}
+
+/** Публичные настройки Supabase Auth (GET /auth/v1/settings) */
+export interface AuthSettings {
+  /** true — подтверждение email выключено, письма не отправляются вообще */
+  autoconfirm: boolean
+  /** true — регистрация новых пользователей запрещена в проекте */
+  signupDisabled: boolean
 }
 
 export interface AuthApi {
@@ -17,6 +27,10 @@ export interface AuthApi {
   signUp(email: string, password: string): Promise<SignUpResult>
   signOut(): Promise<void>
   onChange(cb: (user: AuthUser | null) => void): () => void
+  /** Настройки Auth проекта; null — если получить не удалось */
+  getSettings(): Promise<AuthSettings | null>
+  /** Повторная отправка письма с подтверждением регистрации */
+  resendConfirmation(email: string): Promise<void>
 }
 
 export interface CarPatch {

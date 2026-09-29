@@ -181,6 +181,12 @@ const localAuth: AuthApi = {
   onChange() {
     return () => {}
   },
+  async getSettings() {
+    return null
+  },
+  async resendConfirmation() {
+    /* в демо-режиме письма не отправляются */
+  },
 }
 
 /* ---------- Data ---------- */

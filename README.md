@@ -49,10 +49,9 @@ npm run dev        # http://localhost:5173
 > в Dashboard (или через `psql`/Management API). Publishable/anon-ключи
 > по задумке Supabase имеют доступ только к данным, не к схеме.
 
-**Email-подтверждение:** в проекте включено (`mailer_autoconfirm: false`).
-После регистрации приложение попросит подтвердить email по ссылке из письма.
-Для мгновенного входа без писем отключите
-**Authentication → Sign In / Up → Email → Confirm email** в Dashboard.
+**Email-подтверждение:** см. отдельный раздел
+[«Регистрация: письма, лимиты и почта .ru»](#регистрация-письма-лимиты-и-почта-ru) —
+там же лечение ошибки `email rate limit exceeded`.
 
 Если ключи убрать из `.env` — приложение работает в локальном **демо-режиме**
 (localStorage браузера). В демо-режиме регистрация и вход по email отключены:
@@ -60,6 +59,123 @@ npm run dev        # http://localhost:5173
 (молчаливый вход в демо при попытке регистрации — это баг, он исправлен).
 
 Типы схемы БД лежат в `src/types/database.types.ts` (формат `supabase gen types typescript`).
+
+## Регистрация: письма, лимиты и почта .ru
+
+### Симптом
+
+При регистрации вместо аккаунта появляется ошибка:
+
+```
+email rate limit exceeded
+```
+
+…а завести аккаунт на `@mail.ru`, `@yandex.ru`, `@bk.ru` не получается вовсе.
+
+### Причина
+
+Ошибка приходит от Supabase, а не от приложения. Пока в проекте **включено
+подтверждение email**, каждая регистрация = отправка письма, а письма шлёт
+**встроенный отправитель Supabase**, у которого два жёстких ограничения
+([документация Supabase](https://supabase.com/docs/guides/auth/rate-limits)):
+
+| Ограничение встроенного отправителя | Что видит пользователь |
+|---|---|
+| **2 письма в час на весь проект** | `email rate limit exceeded` (429, `over_email_send_rate_limit`) |
+| Письма только на адреса **участников команды** проекта | `Email address not authorized` — то есть чужой ящик (в том числе любой `.ru`) зарегистрировать нельзя |
+
+Поднять лимит на тарифе Pro нельзя — он одинаковый на всех планах.
+То есть «регистрация на .ru» ломается не из-за домена, а из-за того, что
+письмо такому адресу встроенный отправитель просто не доставляет.
+
+### Решение A — быстро: регистрация без писем (30 секунд)
+
+Подтверждение email выключается, аккаунт создаётся мгновенно на **любой**
+адрес — mail.ru, yandex.ru, bk.ru, list.ru, gmail.com, .рф.
+
+Вариант 1 — Dashboard:
+**Authentication → Sign In / Up → Email → выключить «Confirm email»**.
+
+Вариант 2 — одной командой из репозитория:
+
+```bash
+# токен: https://supabase.com/dashboard/account/tokens (строка sbp_…)
+SUPABASE_ACCESS_TOKEN=sbp_xxx npm run supabase:auth -- --no-confirm
+```
+
+Скрипт [`scripts/supabase-auth-setup.mjs`](scripts/supabase-auth-setup.mjs)
+выключает `mailer_autoconfirm` **и** разрешает вход тем, кто уже
+зарегистрировался, но письма так и не дождался
+(`mailer_allow_unverified_email_sign_ins`) — иначе такие аккаунты остаются
+заблокированными навсегда.
+
+Проверить текущее состояние проекта (без изменений):
+
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_xxx npm run supabase:auth
+```
+
+### Решение B — правильно: свой SMTP (письма остаются)
+
+Свой SMTP снимает оба ограничения: письма уходят на любые адреса, лимит
+поднимается до настраиваемого значения. Подойдёт Resend, Brevo, Unisender,
+Postmark, AWS SES; для надёжной доставки в mail.ru/yandex.ru удобны
+российские отправители (Unisender, Sendpulse) или Яндекс 360.
+
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_xxx npm run supabase:auth -- --smtp \
+  --smtp-host smtp.resend.com --smtp-port 465 \
+  --smtp-user resend --smtp-pass re_xxx \
+  --smtp-from no-reply@ваш-домен.ru --smtp-name "LADA Кредит" \
+  --rate-limit 100
+```
+
+И укажите, куда вести ссылки из писем (иначе подтверждение уводит на
+`localhost`):
+
+```bash
+SUPABASE_ACCESS_TOKEN=sbp_xxx npm run supabase:auth -- \
+  --site-url https://andrey1904-dev.github.io/LadaGrantaCredit/
+```
+
+> Не забудьте про SPF/DKIM для домена отправителя — без них письма
+> уезжают в «Спам» именно у mail.ru и yandex.ru.
+
+### Что делает само приложение
+
+Код не может изменить настройки чужого проекта, но делает всё остальное,
+чтобы регистрация не ломалась на пустом месте:
+
+- **любая почта принимается** — валидация не ограничивает доменные зоны:
+  `.ru`, `.рф` (переводится в punycode), `.com`, `.by`, `.kz`;
+- **чинит ввод** — лишние пробелы, `mailto:`, Caps Lock, запятая вместо точки,
+  русская раскладка (`ivan@mаil.ru` с кириллической «а», `ivan@майл.ру`
+  → `ivan@mail.ru`), подсказывает опечатки (`mail.ry` → `mail.ru`);
+- **не тратит лимит писем** — локальный таймер 60 секунд между попытками
+  (Supabase всё равно откажет) и понятный отсчёт на экране;
+- **объясняет ошибку по-русски** вместо `email rate limit exceeded`, сразу
+  показывая, что нужно сделать владельцу проекта;
+- **не даёт застрять** — кнопки «Попробовать войти» (аккаунт мог создаться,
+  даже если письмо не ушло) и «Отправить письмо ещё раз», ссылка на веб-почту;
+- **предупреждает заранее** — если в проекте включено подтверждение email,
+  на экране регистрации висит предупреждение (приложение узнаёт это через
+  `GET /auth/v1/settings`);
+- **не предлагает example.com** — тестовые домены Supabase отклоняет
+  (`email_address_invalid`), поэтому подсказка в поле теперь `ivan@mail.ru`.
+
+### Отладка без расхода лимита
+
+Заглушка [`scripts/mock-supabase-auth.mjs`](scripts/mock-supabase-auth.mjs)
+эмулирует Supabase Auth вместе с его лимитами — удобно проверять экран
+регистрации, не тратя реальные 2 письма в час:
+
+```bash
+node scripts/mock-supabase-auth.mjs --port 5174   # --autoconfirm, --quota N, --not-authorized
+# .env:
+# VITE_SUPABASE_URL=http://localhost:5174
+# VITE_SUPABASE_ANON_KEY=mock-anon-key
+npm run dev
+```
 
 ## Деплой на GitHub Pages
 
