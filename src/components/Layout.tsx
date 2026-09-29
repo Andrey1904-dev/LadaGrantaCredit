@@ -1,12 +1,12 @@
-import { Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useAppData } from '../context/AppDataContext'
-import BottomNav from './BottomNav'
-import { InfoIcon, LogoutIcon } from './icons'
+import BottomNav, { NAV_TABS } from './BottomNav'
+import { AlertIcon, LogoutIcon, RefreshIcon } from './icons'
 
 /**
- * Мобильный каркас приложения: на десктопе интерфейс центрируется
- * и выглядит как мобильное приложение (max-w 480px).
+ * Основной каркас личного кабинета владельца LADA Granta Sport.
+ * Mobile-first (360–390px), адаптируется к планшету (768px) и десктопу (1440px).
  */
 export default function Layout() {
   const { signOut, mode, user } = useAuth()
@@ -20,48 +20,103 @@ export default function Layout() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-white shadow-[0_0_40px_rgba(0,0,0,0.08)]">
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-black/[0.06] bg-white/95 px-4 py-3 backdrop-blur">
-        <div className="flex items-center gap-2.5">
-          <img src="./favicon.svg" alt="LADA" className="h-8 w-8 rounded-lg" />
-          <div className="leading-tight">
-            <p className="text-[15px] font-extrabold tracking-tight text-ink">
-              LADA <span className="text-lada">Кредит&nbsp;&&nbsp;Гараж</span>
-            </p>
-            <p className="text-[11px] text-muted">
-              {mode === 'demo' ? 'Демо-режим' : user?.email || 'LADA Granta'}
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          aria-label="Выйти"
-          className="rounded-xl p-2 text-muted transition-colors hover:bg-black/5 hover:text-ink"
-        >
-          <LogoutIcon className="h-5 w-5" />
-        </button>
-      </header>
-
-      {/* Баннер ошибки БД (например, таблицы ещё не созданы) */}
-      {error && (
-        <div className="border-b border-warning/30 bg-warning/10 px-4 py-3">
-          <div className="flex items-start gap-2.5">
-            <InfoIcon className="mt-0.5 h-4.5 w-4.5 shrink-0 text-[#9a6700]" />
-            <div className="flex-1">
-              <p className="text-[12.5px] leading-relaxed text-[#9a6700]">{error}</p>
-              <button
-                onClick={() => void refresh()}
-                className="mt-1.5 rounded-lg bg-[#9a6700]/10 px-2.5 py-1 text-[12px] font-semibold text-[#9a6700] transition-colors hover:bg-[#9a6700]/20"
-              >
-                Повторить
-              </button>
+    <div className="min-h-dvh w-full bg-[#0E1013] text-[#F3F4F4]">
+      {/* Верхняя шапка */}
+      <header className="sticky top-0 z-40 border-b border-[#363B43] bg-[#0E1013]/92 backdrop-blur-md">
+        <div className="mx-auto flex max-w-[960px] items-center justify-between gap-3 px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <img
+              src="./favicon.svg"
+              alt="Эмблема кабинета LADA Granta Sport"
+              className="h-9 w-9 shrink-0 rounded-[8px] border border-[#363B43]"
+            />
+            <div className="leading-tight">
+              <div className="flex items-center gap-2">
+                <p className="font-display-num text-[16px] font-bold uppercase tracking-wide text-[#F3F4F4]">
+                  LADA Кредит &amp; Гараж
+                </p>
+                <span className="rounded-[5px] border border-[#E33337]/50 bg-[#E33337]/15 px-1.5 py-0.5 font-display-num text-[10px] font-bold uppercase tracking-widest text-[#E33337]">
+                  SPORT
+                </span>
+              </div>
+              <div className="mt-0.5 flex items-center gap-2 text-[11.5px] text-[#A9AFB7]">
+                <span
+                  className={`inline-block h-1.5 w-1.5 rounded-full ${
+                    mode === 'demo' ? 'bg-[#F5A623]' : 'bg-[#16B374]'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="truncate max-w-[200px] sm:max-w-[300px]">
+                  {mode === 'demo' ? 'Локальный демо-режим' : user?.email || 'Кабинет владельца'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
 
-      <main className="flex-1 px-4 pb-28 pt-4">
+          {/* Навигация в шапке на широких экранах (дополняет нижнюю панель) */}
+          <div className="hidden items-center gap-1 md:flex" role="navigation" aria-label="Быстрые разделы">
+            {NAV_TABS.map(({ to, label, Icon, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  `inline-flex min-h-[40px] items-center gap-2 rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+                    isActive
+                      ? 'border border-[#E33337]/50 bg-[#23272D] text-[#F3F4F4]'
+                      : 'text-[#A9AFB7] hover:bg-[#1A1D22] hover:text-[#F3F4F4]'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className={`h-4 w-4 ${isActive ? 'text-[#E33337]' : 'text-[#A9AFB7]'}`} />
+                    <span>{label}</span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            aria-label="Выйти из аккаунта"
+            title="Выйти из аккаунта"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[10px] border border-[#363B43] bg-[#1A1D22] text-[#A9AFB7] transition-colors hover:border-[#E33337]/60 hover:bg-[#23272D] hover:text-[#F3F4F4]"
+          >
+            <LogoutIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Баннер ошибки БД (например, таблицы ещё не созданы в Supabase) */}
+        {error && (
+          <div className="border-t border-[#F5A623]/35 bg-[#F5A623]/10 px-4 py-3">
+            <div className="mx-auto flex max-w-[960px] items-start gap-3">
+              <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#F5A623]" />
+              <div className="flex-1">
+                <p className="text-[12.5px] leading-relaxed text-[#F3F4F4]">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => void refresh()}
+                  className="mt-2 inline-flex min-h-[38px] items-center gap-1.5 rounded-[8px] border border-[#F5A623]/45 bg-[#23272D] px-3 py-1.5 text-[12px] font-semibold text-[#F5A623] transition-colors hover:bg-[#2B3038]"
+                >
+                  <RefreshIcon className="h-3.5 w-3.5" />
+                  Повторить
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </header>
+
+      {/* Рабочая область */}
+      <main className="mx-auto w-full max-w-[960px] flex-1 px-4 pb-28 pt-4">
         <Outlet />
+
+        <footer className="mt-10 border-t border-[#363B43]/50 pt-4 text-center text-[11px] leading-relaxed text-[#A9AFB7]/75">
+          Личный кабинет владельца автомобиля (концепт в эстетике LADA Granta Sport). Не является официальным сервисом АО «АВТОВАЗ».
+        </footer>
       </main>
 
       <BottomNav />

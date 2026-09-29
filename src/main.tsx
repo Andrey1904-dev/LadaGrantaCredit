@@ -1,10 +1,15 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import './index.css'
+import App from './App'
+import { enableWebpAssets } from './lib/assets'
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+// Кадры Granta хранятся и в JPEG/PNG, и в WebP — подставляем WebP там,
+// где браузер его поддерживает (визуально страница не меняется).
+enableWebpAssets()
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
     <App />
-  </React.StrictMode>,
+  </StrictMode>,
 )

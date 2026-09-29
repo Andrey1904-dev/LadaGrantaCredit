@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, Card, Field, SectionTitle } from '../ui'
+import { Button, Card, Field } from '../ui'
 import { useAppData } from '../../context/AppDataContext'
 import { fmtMoney, parseLocaleNumber } from '../../utils/format'
 import {
@@ -8,26 +8,28 @@ import {
   rateFromPayment,
   termFromPayment,
 } from '../../utils/loan'
+import { PercentIcon, RefreshIcon } from '../icons'
 
 type CalcField = 'amount' | 'rate' | 'payment' | 'term'
 
 const FIELD_ORDER: CalcField[] = ['amount', 'rate', 'payment', 'term']
 
 /**
- * Режим 2: «Моделирование» — чистый клиентский стейт, без записи в БД.
- * Калькулятор подбора: пользователь заполняет любые 3 из 4 полей,
- * четвёртое вычисляется автоматически по аннуитетной формуле.
+ * Режим 2: «Моделирование» — чистый клиентский стейт без записи в БД.
+ * 1) Калькулятор подбора: заполняете любые 3 из 4 полей, 4-е вычисляется автоматически
+ *    (ставка находится численно методом бисекции).
+ * 2) Калькулятор ПДН со шкалой 0–100% и порогами 30% и 50%.
  */
 export default function Modeling() {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
       <SolverCalculator />
       <PdnCalculator />
     </div>
   )
 }
 
-/* ------------------------- Калькулятор подбора ------------------------- */
+/* ------------------------- Калькулятор подбора 4-го поля ------------------------- */
 
 function SolverCalculator() {
   const { loan } = useAppData()
@@ -43,7 +45,10 @@ function SolverCalculator() {
   const [error, setError] = useState('')
 
   /** Вычисляет недостающее поле из трёх заданных */
-  const solve = (target: CalcField, v: Record<CalcField, string>): { text: string; err: string } => {
+  const solve = (
+    target: CalcField,
+    v: Record<CalcField, string>,
+  ): { text: string; err: string } => {
     const S = parseLocaleNumber(v.amount)
     const R = parseLocaleNumber(v.rate)
     const P = parseLocaleNumber(v.payment)
@@ -53,24 +58,29 @@ function SolverCalculator() {
         const p = annuityPayment(S, R, N)
         return Number.isFinite(p)
           ? { text: String(Math.round(p)), err: '' }
-          : { text: '', err: 'Проверьте сумму и срок' }
+          : { text: '', err: 'Проверьте сумму, ставку и срок кредита' }
       }
       case 'term': {
         const n = termFromPayment(S, R, P)
-        if (!Number.isFinite(n)) return { text: '', err: 'Платёж не покрывает даже проценты — увеличьте его или снизьте ставку' }
+        if (!Number.isFinite(n)) {
+          return {
+            text: '',
+            err: 'Платёж не покрывает даже ежемесячные проценты — увеличьте платёж или снизьте ставку',
+          }
+        }
         return { text: String(Math.ceil(n)), err: '' }
       }
       case 'amount': {
         const s = principalFromPayment(P, R, N)
         return Number.isFinite(s)
           ? { text: String(Math.round(s)), err: '' }
-          : { text: '', err: 'Проверьте платёж и срок' }
+          : { text: '', err: 'Проверьте платёж, ставку и срок' }
       }
       case 'rate': {
         const r = rateFromPayment(S, P, N)
         return Number.isFinite(r)
           ? { text: (Math.round(r * 100) / 100).toString(), err: '' }
-          : { text: '', err: 'Не удалось подобрать ставку' }
+          : { text: '', err: 'Не удалось подобрать процентную ставку' }
       }
     }
   }
@@ -109,173 +119,320 @@ function SolverCalculator() {
 
   const fillFromLoan = () => {
     if (!loan) return
-    setValues({
-      amount: String(loan.total_amount),
-      rate: String(loan.interest_rate),
-      payment: '',
-      term: String(loan.term_months),
-    })
+    const p = Math.round(annuityPayment(loan.total_amount, loan.interest_rate, loan.term_months))
     setGiven(['amount', 'rate', 'term'])
     setComputed('payment')
     setValues({
       amount: String(loan.total_amount),
       rate: String(loan.interest_rate),
-      payment: String(Math.round(annuityPayment(loan.total_amount, loan.interest_rate, loan.term_months))),
+      payment: String(p),
       term: String(loan.term_months),
     })
     setError('')
   }
 
-  const labels: Record<CalcField, { label: string; suffix: string; placeholder: string }> = {
-    amount: { label: 'Сумма кредита', suffix: '₽', placeholder: '1 050 000' },
-    rate: { label: 'Ставка, % годовых', suffix: '%', placeholder: '16.9' },
-    payment: { label: 'Ежемесячный платёж', suffix: '₽', placeholder: '26 000' },
-    term: { label: 'Срок кредита', suffix: 'мес', placeholder: '60' },
+  const clearAll = () => {
+    setValues({ amount: '', rate: '', payment: '', term: '' })
+    setGiven([])
+    setComputed(null)
+    setError('')
+  }
+
+  const summary = useMemo(() => {
+    const S = parseLocaleNumber(values.amount)
+    const P = parseLocaleNumber(values.payment)
+    const N = parseLocaleNumber(values.term)
+    if (!(S > 0 && P > 0 && N > 0)) return null
+    const totalPaid = P * N
+    const overpay = Math.max(0, totalPaid - S)
+    return { totalPaid, overpay }
+  }, [values])
+
+  const labels: Record<
+    CalcField,
+    { label: string; suffix: string; placeholder: string; inputMode: 'numeric' | 'decimal' }
+  > = {
+    amount: {
+      label: 'Сумма кредита',
+      suffix: '₽',
+      placeholder: '1 050 000',
+      inputMode: 'numeric',
+    },
+    rate: {
+      label: 'Ставка, % годовых',
+      suffix: '%',
+      placeholder: '16.9',
+      inputMode: 'decimal',
+    },
+    payment: {
+      label: 'Ежемесячный платёж',
+      suffix: '₽',
+      placeholder: '26 040',
+      inputMode: 'numeric',
+    },
+    term: {
+      label: 'Срок кредита',
+      suffix: 'мес',
+      placeholder: '60',
+      inputMode: 'numeric',
+    },
   }
 
   return (
-    <Card className="p-0! overflow-hidden">
-      <div className="flex items-start justify-between px-4 pt-4">
+    <Card className="p-0 overflow-hidden">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-[#363B43] bg-[#23272D]/60 px-4 py-3.5">
         <div>
-          <h3 className="text-[15px] font-bold text-ink">Подбор кредита</h3>
-          <p className="mt-0.5 text-[12px] leading-relaxed text-muted">
-            Заполните любые 3 поля — четвёртое посчитается автоматически
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-1 rounded-full bg-[#E33337]" aria-hidden="true" />
+            <h3 className="font-display-num text-[16px] font-bold uppercase tracking-wide text-[#F3F4F4]">
+              Подбор параметров кредита
+            </h3>
+          </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-[#A9AFB7]">
+            Заполните любые 3 поля — четвёртое рассчитается автоматически (ставка ищется бисекцией)
           </p>
         </div>
-        {loan && (
-          <Button variant="secondary" className="px-3! py-2! text-[12px] whitespace-nowrap" onClick={fillFromLoan}>
-            Мой кредит
-          </Button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {loan && (
+            <button
+              type="button"
+              onClick={fillFromLoan}
+              className="min-h-[38px] rounded-[8px] border border-[#363B43] bg-[#1A1D22] px-3 py-1.5 text-[12px] font-semibold text-[#F3F4F4] transition-colors hover:border-[#E33337]"
+            >
+              Из моего кредита
+            </button>
+          )}
+          {(given.length > 0 || computed) && (
+            <button
+              type="button"
+              onClick={clearAll}
+              aria-label="Сбросить поля калькулятора"
+              className="flex min-h-[38px] items-center gap-1 rounded-[8px] border border-[#363B43] bg-[#1A1D22] px-2.5 py-1.5 text-[12px] font-semibold text-[#A9AFB7] transition-colors hover:text-[#F3F4F4]"
+            >
+              <RefreshIcon className="h-3.5 w-3.5" />
+              Сброс
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="mt-3 flex flex-col gap-3 px-4 pb-4">
-        {FIELD_ORDER.map((field) => {
-          const isComputed = computed === field
-          return (
-            <div key={field} className="relative">
+      <div className="p-4">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+          {FIELD_ORDER.map((f) => {
+            const meta = labels[f]
+            const isComputed = computed === f
+            return (
               <Field
-                label={labels[field].label}
-                suffix={labels[field].suffix}
-                inputMode="decimal"
-                placeholder={labels[field].placeholder}
-                value={values[field]}
-                onChange={(e) => handleChange(field, e.target.value)}
-                className={isComputed ? '[&_input]:border-lada! [&_input]:bg-lada-light! [&_input]:font-bold [&_input]:text-lada!' : ''}
+                key={f}
+                label={meta.label}
+                suffix={meta.suffix}
+                placeholder={meta.placeholder}
+                inputMode={meta.inputMode}
+                value={values[f]}
+                highlighted={isComputed}
+                badge={isComputed ? 'Расчёт' : undefined}
+                onChange={(e) => handleChange(f, e.target.value)}
               />
-              {isComputed && (
-                <span className="absolute right-0 top-0 rounded-full bg-lada px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                  расчёт
-                </span>
-              )}
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
+
         {error && (
-          <p className="rounded-xl bg-warning/10 px-3.5 py-2.5 text-[13px] font-medium text-[#9a6700]">
+          <div
+            role="alert"
+            className="mt-3.5 rounded-[8px] border border-[#EF4444]/40 bg-[#EF4444]/12 px-3.5 py-2.5 text-[12.5px] font-medium text-[#EF4444]"
+          >
             {error}
-          </p>
+          </div>
+        )}
+
+        {summary && !error && (
+          <div className="mt-4 grid grid-cols-2 gap-3 rounded-[8px] border border-[#363B43] bg-[#0E1013]/80 p-3.5">
+            <div>
+              <p className="text-[11px] font-medium text-[#A9AFB7]">Итого выплат за весь срок</p>
+              <p className="font-display-num mt-0.5 text-[18px] font-bold text-[#F3F4F4]">
+                {fmtMoney(summary.totalPaid)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-[#A9AFB7]">Переплата по процентам</p>
+              <p className="font-display-num mt-0.5 text-[18px] font-bold text-[#E33337]">
+                +{fmtMoney(summary.overpay)}
+              </p>
+            </div>
+          </div>
         )}
       </div>
     </Card>
   )
 }
 
-/* ------------------------- Калькулятор ПДН ------------------------- */
+/* ------------------------- Калькулятор ПДН (30% / 50%) ------------------------- */
 
 function PdnCalculator() {
   const { loan } = useAppData()
-  const [income, setIncome] = useState('')
-  const [otherPayments, setOtherPayments] = useState('')
-  const [thisPayment, setThisPayment] = useState(loan ? String(Math.round(loan.monthly_payment)) : '')
+  const [income, setIncome] = useState('115000')
+  const [otherPayments, setOtherPayments] = useState('0')
+  const [thisPayment, setThisPayment] = useState(() =>
+    loan ? String(Math.round(loan.monthly_payment)) : '26040',
+  )
+
+  const inc = parseLocaleNumber(income)
+  const other = Math.max(0, parseLocaleNumber(otherPayments) || 0)
+  const curr = Math.max(0, parseLocaleNumber(thisPayment) || 0)
+  const totalMonthlyDebt = other + curr
 
   const pdn = useMemo(() => {
-    const inc = parseLocaleNumber(income)
-    const other = parseLocaleNumber(otherPayments) || 0
-    const current = parseLocaleNumber(thisPayment) || 0
     if (!(inc > 0)) return null
-    return ((other + current) / inc) * 100
-  }, [income, otherPayments, thisPayment])
+    return (totalMonthlyDebt / inc) * 100
+  }, [inc, totalMonthlyDebt])
 
-  const zone = pdn === null ? null : pdn < 30 ? 'green' : pdn <= 50 ? 'yellow' : 'red'
-  const zoneText = {
-    green: 'Комфортная нагрузка — платежи ниже 30% дохода',
-    yellow: 'Повышенная нагрузка (30–50%) — банк может запросить подтверждение дохода',
-    red: 'Высокая нагрузка (>50%) — велика вероятность отказа и риск просрочек',
-  } as const
-  const zoneColor = { green: '#12A76D', yellow: '#F5A623', red: '#E23D3D' } as const
+  const zone: 'safe' | 'warn' | 'danger' | null = useMemo(() => {
+    if (pdn === null) return null
+    if (pdn < 30) return 'safe'
+    if (pdn <= 50) return 'warn'
+    return 'danger'
+  }, [pdn])
+
+  const zoneConfig = {
+    safe: {
+      color: '#16B374',
+      badge: 'Комфортная нагрузка (< 30%)',
+      text: 'Долговая нагрузка в зелёной зоне: платежи занимают менее 30% ежемесячного дохода.',
+    },
+    warn: {
+      color: '#F5A623',
+      badge: 'Повышенная нагрузка (30–50%)',
+      text: 'Умеренная зона риска: от 30% до 50% дохода уходит на кредиты. Рекомендуется финансовый резерв.',
+    },
+    danger: {
+      color: '#EF4444',
+      badge: 'Критическая нагрузка (> 50%)',
+      text: 'Свыше 50% дохода уходит на платежи — высокая вероятность отказа банка и кассового разрыва.',
+    },
+  }
 
   return (
-    <>
-      <SectionTitle>Показатель долговой нагрузки (ПДН)</SectionTitle>
-      <Card className="flex flex-col gap-3.5">
-        <Field
-          label="Ежемесячный доход семьи"
-          suffix="₽"
-          inputMode="decimal"
-          placeholder="120 000"
-          value={income}
-          onChange={(e) => setIncome(e.target.value)}
-        />
-        <Field
-          label="Платежи по другим кредитам"
-          suffix="₽"
-          inputMode="decimal"
-          placeholder="0"
-          value={otherPayments}
-          onChange={(e) => setOtherPayments(e.target.value)}
-        />
-        <Field
-          label="Платёж по этому кредиту"
-          suffix="₽"
-          inputMode="decimal"
-          placeholder={loan ? String(Math.round(loan.monthly_payment)) : '26 000'}
-          value={thisPayment}
-          onChange={(e) => setThisPayment(e.target.value)}
-        />
+    <Card className="p-0 overflow-hidden">
+      <div className="border-b border-[#363B43] bg-[#23272D]/60 px-4 py-3.5">
+        <div className="flex items-center gap-2">
+          <PercentIcon className="h-4 w-4 text-[#E33337]" />
+          <h3 className="font-display-num text-[16px] font-bold uppercase tracking-wide text-[#F3F4F4]">
+            Показатель долговой нагрузки (ПДН)
+          </h3>
+        </div>
+        <p className="mt-1 text-[12px] leading-relaxed text-[#A9AFB7]">
+          Оценка доли ежемесячного дохода, уходящей на обслуживание всех кредитов (пороги ЦБ: 30% и 50%)
+        </p>
+      </div>
 
-        {/* Шкала ПДН 0–100% с зонами */}
-        <div className="mt-1">
-          <div className="flex justify-between text-[11px] font-medium text-muted">
-            <span>ПДН</span>
-            <span className="text-base font-extrabold" style={{ color: zone ? zoneColor[zone] : '#6B7280' }}>
-              {pdn === null ? '—' : `${Math.min(999, Math.round(pdn))}%`}
-            </span>
+      <div className="p-4">
+        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+          <Field
+            label="Ваш доход в месяц"
+            suffix="₽"
+            inputMode="numeric"
+            placeholder="115 000"
+            value={income}
+            onChange={(e) => setIncome(e.target.value)}
+          />
+          <Field
+            label="Другие кредиты"
+            suffix="₽"
+            inputMode="numeric"
+            placeholder="0"
+            value={otherPayments}
+            onChange={(e) => setOtherPayments(e.target.value)}
+          />
+          <Field
+            label="Платёж по автокредиту"
+            suffix="₽"
+            inputMode="numeric"
+            placeholder="26 040"
+            value={thisPayment}
+            onChange={(e) => setThisPayment(e.target.value)}
+          />
+        </div>
+
+        {loan && (
+          <div className="mt-2.5 flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-[36px] px-2.5 py-1 text-[12px]"
+              onClick={() => setThisPayment(String(Math.round(loan.monthly_payment)))}
+            >
+              Подставить мой платёж ({fmtMoney(loan.monthly_payment)})
+            </Button>
           </div>
-          <div className="relative mt-1.5 h-3.5 w-full overflow-hidden rounded-full">
-            <div className="absolute inset-0 flex">
-              <div className="h-full bg-success/25" style={{ width: '30%' }} />
-              <div className="h-full bg-warning/25" style={{ width: '20%' }} />
-              <div className="h-full bg-danger/25" style={{ width: '50%' }} />
+        )}
+
+        {/* Блок шкалы ПДН 0–100% с отметками 30% и 50% */}
+        <div className="mt-4 rounded-[10px] border border-[#363B43] bg-[#0E1013] p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
+              <span className="text-[11.5px] font-bold uppercase tracking-wider text-[#A9AFB7]">
+                Расчётный ПДН
+              </span>
+              <p
+                className="font-display-num mt-0.5 text-[30px] font-bold leading-none"
+                style={{ color: zone ? zoneConfig[zone].color : '#F3F4F4' }}
+              >
+                {pdn === null ? '—' : `${Math.min(999, Math.round(pdn))}%`}
+              </p>
             </div>
+            {zone && (
+              <span
+                className="rounded-[6px] border px-2.5 py-1 text-[11.5px] font-bold"
+                style={{
+                  borderColor: `${zoneConfig[zone].color}55`,
+                  backgroundColor: `${zoneConfig[zone].color}18`,
+                  color: zoneConfig[zone].color,
+                }}
+              >
+                {zoneConfig[zone].badge}
+              </span>
+            )}
+          </div>
+
+          {/* 3-зонная шкала с порогами 30% и 50% */}
+          <div className="relative mt-4">
+            <div className="grid h-3 w-full grid-cols-[30fr_20fr_50fr] overflow-hidden rounded-full border border-[#363B43] bg-[#1A1D22]">
+              <div className="bg-[#16B374]/80" title="До 30% — безопасная зона" />
+              <div className="border-x border-[#0E1013] bg-[#F5A623]/80" title="30–50% — умеренная нагрузка" />
+              <div className="bg-[#EF4444]/80" title="Свыше 50% — высокая нагрузка" />
+            </div>
+
+            {/* Маркер текущего значения */}
             {pdn !== null && (
               <div
-                className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(100, pdn)}%`, backgroundColor: zoneColor[zone!] }}
+                className="pointer-events-none absolute -top-1.5 h-6 w-1.5 -translate-x-1/2 rounded-full bg-[#F3F4F4] shadow-[0_0_0_2px_#0E1013] transition-all duration-200"
+                style={{ left: `${Math.min(100, Math.max(0, pdn))}%` }}
+                aria-hidden="true"
               />
             )}
           </div>
-          <div className="mt-1 flex justify-between text-[10px] font-medium text-muted">
-            <span>0%</span>
-            <span>30%</span>
-            <span>50%</span>
-            <span>100%</span>
+
+          {/* Подписи порогов */}
+          <div className="relative mt-1.5 h-4 text-[11px] font-mono font-semibold text-[#A9AFB7]">
+            <span className="absolute left-0">0%</span>
+            <span className="absolute left-[30%] -translate-x-1/2 text-[#16B374]">30%</span>
+            <span className="absolute left-[50%] -translate-x-1/2 text-[#F5A623]">50%</span>
+            <span className="absolute right-0 text-[#EF4444]">100%</span>
           </div>
-          {zone && (
-            <p
-              className="mt-2.5 rounded-xl px-3.5 py-2.5 text-[13px] font-medium"
-              style={{ backgroundColor: `${zoneColor[zone]}1a`, color: zone === 'yellow' ? '#9a6700' : zoneColor[zone] }}
-            >
-              {fmtMoney((parseLocaleNumber(otherPayments) || 0) + (parseLocaleNumber(thisPayment) || 0))} в месяц — {zoneText[zone]}
-            </p>
-          )}
-          {pdn === null && (
-            <p className="mt-2.5 text-[12px] text-muted">
-              Укажите доход, чтобы увидеть, какую долю бюджета забирают кредиты
+
+          {zone ? (
+            <div className="mt-3 border-t border-[#363B43]/70 pt-2.5 text-[12.5px] leading-relaxed text-[#A9AFB7]">
+              Суммарный платёж <strong className="text-[#F3F4F4]">{fmtMoney(totalMonthlyDebt)}</strong> в месяц.{' '}
+              {zoneConfig[zone].text}
+            </div>
+          ) : (
+            <p className="mt-3 border-t border-[#363B43]/70 pt-2.5 text-[12.5px] text-[#A9AFB7]">
+              Укажите ваш ежемесячный доход, чтобы рассчитать ПДН и увидеть зону нагрузки.
             </p>
           )}
         </div>
-      </Card>
-    </>
+      </div>
+    </Card>
   )
 }

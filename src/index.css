@@ -1,34 +1,70 @@
 @import "tailwindcss";
 
 @theme {
-  /* Дизайн-система LADA */
-  --color-lada: #005baa;
-  --color-lada-dark: #004179;
-  --color-lada-light: #e3eef9;
-  --color-card: #f5f7f9;
-  --color-ink: #1a1a1a;
-  --color-muted: #6b7280;
-  --color-danger: #e23d3d;
+  /* Визуальная система LADA Granta Sport */
+  --color-bg: #0e1013;
+  --color-surface: #1a1d22;
+  --color-surface-2: #23272d;
+  --color-ink: #f3f4f4;
+  --color-muted: #a9afb7;
+  --color-line: #363b43;
+
+  /* Акцент Granta Sport Red */
+  --color-sport: #e33337;
+  --color-sport-hover: #c82529;
+  --color-sport-soft: rgba(227, 51, 55, 0.14);
+
+  /* Семантические цвета статусов */
+  --color-success: #16b374;
   --color-warning: #f5a623;
-  --color-success: #12a76d;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-danger: #ef4444;
+
+  /* Типографика */
+  --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Oswald", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 html {
   -webkit-tap-highlight-color: transparent;
+  color-scheme: dark;
+  background-color: var(--color-bg);
+  overflow-x: hidden;
 }
 
 body {
-  background-color: #e8edf2;
+  background-color: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
-/* Ползунки и скроллбары аккуратнее */
+/* Выразительный узкий гротеск для коротких заголовков, сумм и одометра */
+.font-display-num {
+  font-family: var(--font-display);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+/* Технический фокус с клавиатуры */
+:focus-visible {
+  outline: 2px solid var(--color-sport);
+  outline-offset: 2px;
+}
+
+/* Аккуратные скроллбары */
 ::-webkit-scrollbar {
-  width: 0;
-  height: 0;
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #0e1013;
+}
+::-webkit-scrollbar-thumb {
+  background: #363b43;
+  border-radius: 3px;
 }
 
 /* Убираем стрелки у number-инпутов */
@@ -42,15 +78,18 @@ input[type="number"] {
   appearance: textfield;
 }
 
-/* Анимация BottomSheet */
+/* Короткие технические переходы 160–280 мс */
 @keyframes sheet-up {
   from {
     transform: translateY(100%);
+    opacity: 0.8;
   }
   to {
     transform: translateY(0);
+    opacity: 1;
   }
 }
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -59,22 +98,38 @@ input[type="number"] {
     opacity: 1;
   }
 }
+
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: translateY(0);
   }
 }
+
 .animate-sheet-up {
-  animation: sheet-up 0.28s cubic-bezier(0.32, 0.72, 0.35, 1);
+  animation: sheet-up 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+
 .animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+  animation: fade-in 180ms ease-out;
 }
+
 .animate-pop-in {
-  animation: pop-in 0.22s ease-out;
+  animation: pop-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Учёт prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

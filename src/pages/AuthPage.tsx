@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { mailCooldownLeft, useAuth } from '../context/AuthContext'
-import { Button, Field } from '../components/ui'
+import { Button, Field, SegmentedControl } from '../components/ui'
 import { checkEmail, webmailUrl } from '../lib/email'
 import { AuthProblem, toAuthProblem } from '../lib/authErrors'
+import { GRANTA_ASSETS } from '../lib/assets'
+import { AlertIcon, ArrowUpRightIcon, CarIcon, CheckIcon, InfoIcon } from '../components/icons'
 
-/** Экран 0: Авторизация (Email + Пароль через Supabase Auth) */
+/** Экран 0: Авторизация и вход в личный кабинет владельца LADA Granta Sport */
 export default function AuthPage() {
   const { signIn, signUp, enterDemo, resendConfirmation, mode, settings } = useAuth()
   const [isRegister, setIsRegister] = useState(false)
@@ -12,13 +14,11 @@ export default function AuthPage() {
   const [password, setPassword] = useState('')
   const [problem, setProblem] = useState<AuthProblem | null>(null)
   const [notice, setNotice] = useState('')
-  /** адрес, на который ждём письмо (для кнопки «отправить ещё раз») */
   const [pendingEmail, setPendingEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [cooldown, setCooldown] = useState(mailCooldownLeft())
   const passwordRef = useRef<HTMLInputElement>(null)
 
-  /** живой отсчёт до следующей разрешённой отправки письма */
   useEffect(() => {
     if (cooldown <= 0) return
     const t = setInterval(() => setCooldown(mailCooldownLeft()), 1000)
@@ -26,7 +26,6 @@ export default function AuthPage() {
   }, [cooldown])
 
   const check = useMemo(() => checkEmail(email), [email])
-  /** проект отправляет письма с подтверждением (а значит, упирается в лимиты) */
   const needsConfirmation = settings !== null && settings.autoconfirm === false
   const signupBlocked = settings?.signupDisabled === true
 
@@ -45,11 +44,15 @@ export default function AuthPage() {
   const submit = async () => {
     reset()
     if (!check.ok) {
-      setProblem(new AuthProblem('email_invalid', check.error ?? 'Введите корректный email'))
+      setProblem(
+        new AuthProblem('email_invalid', check.error ?? 'Введите корректный email'),
+      )
       return
     }
     if (password.length < 6) {
-      setProblem(new AuthProblem('weak_password', 'Пароль должен содержать минимум 6 символов'))
+      setProblem(
+        new AuthProblem('weak_password', 'Пароль должен содержать минимум 6 символов'),
+      )
       return
     }
     setBusy(true)
@@ -59,7 +62,6 @@ export default function AuthPage() {
         setPendingEmail(check.email)
         setCooldown(mailCooldownLeft())
         if (!result.session) {
-          // Supabase требует подтверждения email
           setNotice(
             `Аккаунт создан. Письмо со ссылкой подтверждения отправлено на ${check.email}. ` +
               'Откройте ссылку из письма (загляните и в папку «Спам»), затем войдите.',
@@ -77,7 +79,6 @@ export default function AuthPage() {
     }
   }
 
-  /** «Попробовать войти» — аккаунт мог быть создан, даже если письмо не ушло */
   const tryLogin = async () => {
     reset()
     setBusy(true)
@@ -96,7 +97,9 @@ export default function AuthPage() {
     try {
       await resendConfirmation(pendingEmail || check.email)
       setCooldown(mailCooldownLeft())
-      setNotice(`Письмо отправлено повторно на ${pendingEmail || check.email}. Проверьте входящие и «Спам».`)
+      setNotice(
+        `Письмо отправлено повторно на ${pendingEmail || check.email}. Проверьте входящие и «Спам».`,
+      )
     } catch (e) {
       fail(e)
     } finally {
@@ -107,248 +110,397 @@ export default function AuthPage() {
   const mailLink = webmailUrl(pendingEmail || check.email)
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[480px] flex-col bg-white px-6 shadow-[0_0_40px_rgba(0,0,0,0.08)]">
-      <div className="flex flex-1 flex-col justify-center py-10">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <img src="./favicon.svg" alt="LADA" className="mb-4 h-20 w-20 rounded-2xl shadow-lg shadow-lada/25" />
-          <h1 className="text-[22px] font-extrabold tracking-tight text-ink">
-            LADA <span className="text-lada">Кредит&nbsp;&&nbsp;Гараж</span>
-          </h1>
-          <p className="mt-1.5 max-w-[280px] text-[13px] leading-relaxed text-muted">
-            Учёт расходов, ТО и умное управление автокредитом вашей LADA Granta
-          </p>
-        </div>
+    <div className="min-h-dvh w-full bg-[#0E1013] text-[#F3F4F4]">
+      <div className="mx-auto grid min-h-dvh max-w-[1040px] grid-cols-1 lg:grid-cols-12 lg:items-center lg:gap-8 lg:px-6 lg:py-8">
+        {/* Левая / верхняя колонка: Hero-кадр серой Granta Sport на мосту + макро-деталь шильдика SPORT */}
+        <div className="lg:col-span-7">
+          <div className="relative overflow-hidden bg-[#1A1D22] lg:rounded-[12px] lg:border lg:border-[#363B43]">
+            {/* Кадр 1: Серая Granta Sport на мосту, ракурс 3/4. Автомобиль целиком в кадре, передний бампер и колёса не обрезаются */}
+            <div className="relative aspect-[16/10] w-full bg-[#0E1013] sm:aspect-[16/9]">
+              <img
+                src={GRANTA_ASSETS.hero.src}
+                data-webp-src={GRANTA_ASSETS.hero.webp}
+                alt={GRANTA_ASSETS.hero.alt}
+                fetchPriority="high"
+                decoding="async"
+                className="h-full w-full object-cover object-center"
+              />
+              {/* Мягкое затемнение под текст градиентом, не перекрывающее автомобиль непрозрачной плашкой */}
+              <div
+                className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0E1013] via-[#0E1013]/30 to-transparent"
+                aria-hidden="true"
+              />
+            </div>
 
-        {mode === 'demo' ? (
-          /* Демо-режим: настоящий вход и регистрация невозможны —
-             не показываем форму, которая молча заводила в демо */
-          <div className="flex flex-col gap-3.5">
-            <div className="rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3.5">
-              <p className="text-[14px] font-bold text-[#9a6700]">Вход и регистрация отключены</p>
-              <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#9a6700]">
-                Эта сборка приложения сделана без ключей Supabase, поэтому создать настоящий
-                аккаунт или войти по email невозможно — данные было бы некуда сохранять.
-                Доступен только демо-режим: данные хранятся в браузере и не синхронизируются.
-              </p>
-              <p className="mt-2.5 text-[12px] leading-relaxed text-[#9a6700]">
-                <span className="font-bold">Как включить:</span> локально — скопируйте{' '}
-                <code>.env.example</code> в <code>.env</code> и укажите ключи проекта Supabase;
-                на GitHub Pages — добавьте секреты <code>VITE_SUPABASE_URL</code> и{' '}
-                <code>VITE_SUPABASE_ANON_KEY</code> в Settings → Secrets and variables → Actions
-                и запустите деплой заново.
+            {/* Заголовок поверх нижней части градиента */}
+            <div className="relative -mt-6 px-5 pb-5 sm:px-6">
+              <div className="inline-flex items-center gap-2 rounded-[6px] border border-[#E33337]/50 bg-[#0E1013]/85 px-2.5 py-1 backdrop-blur-sm">
+                <span className="h-2 w-2 rounded-full bg-[#E33337]" aria-hidden="true" />
+                <span className="font-display-num text-[11px] font-bold uppercase tracking-widest text-[#F3F4F4]">
+                  LADA GRANTA SPORT · ЛИЧНЫЙ КАБИНЕТ
+                </span>
+              </div>
+              <h1 className="font-display-num mt-2.5 text-[28px] font-bold uppercase leading-tight tracking-wide text-[#F3F4F4] sm:text-[32px]">
+                LADA Кредит &amp; Гараж
+              </h1>
+              <p className="mt-1.5 max-w-[460px] text-[13.5px] leading-relaxed text-[#A9AFB7]">
+                Персональный учёт автокредита, расхода топлива, стоимости километра, полиса ОСАГО и сервисной книжки вашего автомобиля.
               </p>
             </div>
-            <Button variant="secondary" className="w-full" onClick={() => void enterDemo()}>
-              Войти в демо-режим
-            </Button>
           </div>
-        ) : (
-          <div className="flex flex-col gap-3.5">
-            <Field
-              label="Email"
-              type="email"
-              inputMode="email"
-              placeholder="ivan@mail.ru"
-              autoComplete="email"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                if (problem) setProblem(null)
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && passwordRef.current?.focus()}
-              hint={
-                isRegister ? 'Подойдёт любая почта: mail.ru, yandex.ru, bk.ru, gmail.com, .рф' : undefined
-              }
-            />
 
-            {/* мягкая подсказка при опечатке в домене */}
-            {email.length > 3 && check.suggestion && check.fixed && (
-              <button
-                type="button"
-                onClick={() => setEmail(check.fixed!)}
-                className="-mt-1.5 self-start text-left text-[12.5px] font-medium text-lada"
-              >
-                {check.suggestion} — исправить
-              </button>
-            )}
+          {/* Кадр 2: Крупный план шильдика SPORT на тёмной решётке радиатора (без наложения текста поверх шильдика) */}
+          <div className="mx-4 mt-3 overflow-hidden rounded-[10px] border border-[#363B43] bg-[#1A1D22] lg:mx-0 lg:mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr]">
+              <div className="h-24 w-full overflow-hidden bg-[#0E1013] sm:h-full">
+                <img
+                  src={GRANTA_ASSETS.detail.src}
+                  data-webp-src={GRANTA_ASSETS.detail.webp}
+                  alt={GRANTA_ASSETS.detail.alt}
+                  loading="lazy"
+                  className="h-full w-full object-cover object-center"
+                />
+              </div>
+              <div className="flex flex-col justify-center border-t border-[#363B43] p-3.5 sm:border-l sm:border-t-0">
+                <p className="font-display-num text-[13px] font-bold uppercase tracking-wider text-[#F3F4F4]">
+                  Все сценарии владельца в одной системе
+                </p>
+                <p className="mt-1 text-[12px] leading-relaxed text-[#A9AFB7]">
+                  Аннуитетный график и калькулятор ПДН, учёт заправок с контролем одометра, напоминания об ОСАГО и журнал ТО.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            <Field
-              label="Пароль"
-              type="password"
-              placeholder="Минимум 6 символов"
-              autoComplete={isRegister ? 'new-password' : 'current-password'}
-              value={password}
-              ref={passwordRef}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                if (problem) setProblem(null)
-              }}
-              onKeyDown={(e) => e.key === 'Enter' && submit()}
-            />
+        {/* Правая / нижняя колонка: форма входа, предупреждения Supabase и демо-режим */}
+        <div className="px-4 pb-10 pt-4 lg:col-span-5 lg:px-0 lg:py-0">
+          <div className="rounded-[12px] border border-[#363B43] bg-[#1A1D22] p-5 sm:p-6">
+            {mode === 'demo' ? (
+              /* Демо-режим: сборка без ключей Supabase */
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b border-[#363B43] pb-3">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#E33337]">
+                      Автономный режим
+                    </span>
+                    <h2 className="font-display-num text-[20px] font-bold uppercase tracking-wide text-[#F3F4F4]">
+                      Демо-кабинет владельца
+                    </h2>
+                  </div>
+                  <CarIcon className="h-6 w-6 text-[#E33337]" />
+                </div>
 
-            {/* Регистрация запрещена в настройках проекта */}
-            {isRegister && signupBlocked && (
-              <InfoBox tone="warn" title="Регистрация отключена в проекте Supabase">
-                Включите её в Dashboard: Authentication → Sign In / Up → «Allow new users to sign up».
-              </InfoBox>
-            )}
+                <div className="rounded-[10px] border border-[#F5A623]/40 bg-[#F5A623]/10 p-3.5">
+                  <div className="flex items-start gap-2.5">
+                    <AlertIcon className="mt-0.5 h-5 w-5 shrink-0 text-[#F5A623]" />
+                    <div>
+                      <p className="text-[13.5px] font-bold text-[#F3F4F4]">
+                        Вход и регистрация отключены
+                      </p>
+                      <p className="mt-1 text-[12.5px] leading-relaxed text-[#A9AFB7]">
+                        Эта сборка приложения запущена без ключей Supabase, поэтому создать облачный аккаунт или войти по email нельзя. Доступен полнофункциональный{' '}
+                        <strong className="text-[#F3F4F4]">локальный демо-режим</strong> — все данные сохраняются в браузере (<code className="font-mono text-[11.5px] text-[#F3F4F4]">localStorage</code>).
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Предупреждаем заранее: письма шлёт встроенный отправитель Supabase */}
-            {isRegister && !signupBlocked && needsConfirmation && (
-              <InfoBox tone="warn" title="Потребуется подтверждение по письму">
-                После регистрации Supabase пришлёт письмо со ссылкой. Если письмо не приходит или
-                появляется «email rate limit exceeded» — в проекте не подключён свой SMTP:
-                встроенный отправитель шлёт 2 письма в час и только на адреса участников команды.
-                <MailFix />
-              </InfoBox>
-            )}
+                <Button
+                  onClick={() => void enterDemo()}
+                  className="w-full py-3 text-[14.5px]"
+                >
+                  Войти в демо-режим
+                  <ArrowUpRightIcon className="h-4 w-4" />
+                </Button>
 
-            {problem && (
-              <div className="rounded-xl bg-danger/10 px-3.5 py-3 text-[13px] text-danger">
-                <p className="font-semibold">{problem.message}</p>
-                {problem.detail && <p className="mt-1.5 text-[12.5px] leading-relaxed">{problem.detail}</p>}
+                <div className="rounded-[10px] border border-[#363B43] bg-[#23272D]/60 p-3.5 text-[12px] leading-relaxed text-[#A9AFB7]">
+                  <strong className="text-[#F3F4F4]">Как подключить Supabase:</strong> локально скопируйте{' '}
+                  <code className="rounded bg-[#0E1013] px-1.5 py-0.5 font-mono text-[11px] text-[#F3F4F4]">
+                    .env.example
+                  </code>{' '}
+                  в{' '}
+                  <code className="rounded bg-[#0E1013] px-1.5 py-0.5 font-mono text-[11px] text-[#F3F4F4]">
+                    .env
+                  </code>{' '}
+                  и укажите <code className="font-mono text-[11px] text-[#F3F4F4]">VITE_SUPABASE_URL</code> и{' '}
+                  <code className="font-mono text-[11px] text-[#F3F4F4]">VITE_SUPABASE_ANON_KEY</code>; на GitHub Pages добавьте их в Settings → Secrets and variables → Actions.
+                </div>
+              </div>
+            ) : (
+              /* Режим с подключённым Supabase */
+              <div className="flex flex-col gap-4">
+                <SegmentedControl
+                  value={isRegister ? 'register' : 'login'}
+                  onChange={(v) => {
+                    reset()
+                    setIsRegister(v === 'register')
+                  }}
+                  options={[
+                    { value: 'login', label: 'Вход в кабинет' },
+                    { value: 'register', label: 'Регистрация' },
+                  ]}
+                />
 
-                {(problem.mailIssue || problem.kind === 'user_exists') && (
-                  <div className="mt-2.5 flex flex-wrap gap-2">
-                    {problem.kind === 'user_exists' && (
-                      <MiniButton
-                        onClick={() => {
-                          reset()
-                          setIsRegister(false)
-                        }}
-                      >
-                        Перейти ко входу
-                      </MiniButton>
-                    )}
-                    {problem.mailIssue && password.length >= 6 && (
-                      <MiniButton onClick={() => void tryLogin()} disabled={busy}>
-                        Попробовать войти
-                      </MiniButton>
-                    )}
-                    {problem.mailIssue && problem.kind !== 'email_rate_limit' && (
-                      <MiniButton onClick={() => void resend()} disabled={busy || cooldown > 0}>
-                        {cooldown > 0 ? `Письмо ещё раз (${cooldown} с)` : 'Отправить письмо ещё раз'}
-                      </MiniButton>
-                    )}
+                <Field
+                  label="Электронная почта"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="ivan@mail.ru"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (problem) setProblem(null)
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && passwordRef.current?.focus()}
+                  hint={
+                    isRegister
+                      ? 'Поддерживается любая почта: mail.ru, yandex.ru, bk.ru, gmail.com, .рф'
+                      : undefined
+                  }
+                />
+
+                {/* Мягкая подсказка при опечатке в домене */}
+                {email.length > 3 && check.suggestion && check.fixed && (
+                  <div className="flex items-center justify-between gap-2 rounded-[8px] border border-[#F5A623]/40 bg-[#F5A623]/10 px-3 py-2 text-[12px] text-[#F3F4F4]">
+                    <span>{check.suggestion}</span>
+                    <button
+                      type="button"
+                      onClick={() => setEmail(check.fixed!)}
+                      className="shrink-0 rounded-[6px] bg-[#E33337] px-2.5 py-1 text-[11.5px] font-bold text-[#F3F4F4]"
+                    >
+                      Исправить
+                    </button>
                   </div>
                 )}
 
-                {problem.mailIssue && <MailFix />}
-              </div>
-            )}
+                <Field
+                  ref={passwordRef}
+                  label="Пароль"
+                  type="password"
+                  autoComplete={isRegister ? 'new-password' : 'current-password'}
+                  placeholder="Минимум 6 символов"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value)
+                    if (problem) setProblem(null)
+                  }}
+                  onKeyDown={(e) => e.key === 'Enter' && void submit()}
+                />
 
-            {notice && (
-              <div className="rounded-xl bg-success/10 px-3.5 py-3 text-[13px] text-success">
-                <p className="font-medium leading-relaxed">{notice}</p>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  {mailLink && (
-                    <a
-                      href={mailLink}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="rounded-lg bg-white/70 px-2.5 py-1.5 text-[12.5px] font-semibold text-success"
-                    >
-                      Открыть почту
-                    </a>
-                  )}
-                  {pendingEmail && (
-                    <MiniButton onClick={() => void resend()} disabled={busy || cooldown > 0} tone="success">
-                      {cooldown > 0 ? `Письмо ещё раз (${cooldown} с)` : 'Отправить письмо ещё раз'}
-                    </MiniButton>
-                  )}
+                {/* Предупреждение: регистрация запрещена в настройках проекта */}
+                {isRegister && signupBlocked && (
+                  <AlertBox tone="danger" title="Регистрация отключена в проекте Supabase">
+                    Включите её в Dashboard: Authentication → Sign In / Up → «Allow new users to sign up».
+                  </AlertBox>
+                )}
+
+                {/* Предупреждение заранее: письма шлёт встроенный отправитель Supabase */}
+                {isRegister && !signupBlocked && needsConfirmation && (
+                  <AlertBox tone="warn" title="Потребуется подтверждение по ссылке из письма">
+                    После регистрации Supabase пришлёт письмо со ссылкой. Если письмо не приходит или появляется{' '}
+                    <code className="font-mono text-[11px]">email rate limit exceeded</code> — в проекте не подключён свой SMTP: встроенный отправитель шлёт 2 письма в час и только на адреса участников команды.
+                  </AlertBox>
+                )}
+
+                {problem && (
+                  <div
+                    role="alert"
+                    className="flex flex-col gap-2.5 rounded-[10px] border border-[#EF4444]/45 bg-[#EF4444]/12 p-3.5 text-[12.5px]"
+                  >
+                    <div className="flex items-start gap-2">
+                      <AlertIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#EF4444]" />
+                      <div className="flex-1">
+                        <p className="font-bold text-[#F3F4F4]">{problem.message}</p>
+                        {problem.detail && (
+                          <p className="mt-1 leading-relaxed text-[#A9AFB7]">{problem.detail}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {(problem.mailIssue || problem.kind === 'user_exists') && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {problem.kind === 'user_exists' && (
+                          <SmallActionButton
+                            onClick={() => {
+                              reset()
+                              setIsRegister(false)
+                            }}
+                          >
+                            Перейти ко входу
+                          </SmallActionButton>
+                        )}
+                        {problem.mailIssue && password.length >= 6 && (
+                          <SmallActionButton onClick={() => void tryLogin()} disabled={busy}>
+                            Попробовать войти
+                          </SmallActionButton>
+                        )}
+                        {problem.mailIssue && problem.kind !== 'email_rate_limit' && (
+                          <SmallActionButton
+                            onClick={() => void resend()}
+                            disabled={busy || cooldown > 0}
+                          >
+                            {cooldown > 0
+                              ? `Письмо ещё раз (${cooldown} с)`
+                              : 'Отправить письмо ещё раз'}
+                          </SmallActionButton>
+                        )}
+                      </div>
+                    )}
+
+                    {problem.mailIssue && <SmtpFixHint />}
+                  </div>
+                )}
+
+                {notice && (
+                  <div className="flex flex-col gap-2.5 rounded-[10px] border border-[#16B374]/45 bg-[#16B374]/12 p-3.5 text-[12.5px]">
+                    <div className="flex items-start gap-2">
+                      <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#16B374]" />
+                      <p className="leading-relaxed text-[#F3F4F4]">{notice}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {mailLink && (
+                        <a
+                          href={mailLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex min-h-[36px] items-center gap-1 rounded-[8px] border border-[#16B374]/50 bg-[#23272D] px-3 py-1 text-[12px] font-bold text-[#F3F4F4] hover:border-[#16B374]"
+                        >
+                          Открыть почту
+                          <ArrowUpRightIcon className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                      {pendingEmail && (
+                        <SmallActionButton
+                          tone="success"
+                          onClick={() => void resend()}
+                          disabled={busy || cooldown > 0}
+                        >
+                          {cooldown > 0
+                            ? `Письмо ещё раз (${cooldown} с)`
+                            : 'Отправить письмо ещё раз'}
+                        </SmallActionButton>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={() => void submit()}
+                  disabled={busy || (isRegister && signupBlocked)}
+                  className="w-full py-3 text-[14.5px]"
+                >
+                  {busy
+                    ? 'Подождите…'
+                    : isRegister
+                      ? cooldown > 0 && needsConfirmation
+                        ? `Повторить через ${cooldown} с`
+                        : 'Создать аккаунт'
+                      : 'Войти в кабинет'}
+                </Button>
+
+                <div className="relative my-1 flex items-center justify-center">
+                  <span className="w-full border-t border-[#363B43]" />
+                  <span className="bg-[#1A1D22] px-3 text-[11px] font-semibold uppercase tracking-wider text-[#A9AFB7]">
+                    или без регистрации
+                  </span>
+                  <span className="w-full border-t border-[#363B43]" />
                 </div>
+
+                <Button
+                  variant="secondary"
+                  onClick={() => void enterDemo()}
+                  disabled={busy}
+                  className="w-full"
+                >
+                  Войти в демо-режим
+                  <ArrowUpRightIcon className="h-4 w-4 text-[#E33337]" />
+                </Button>
               </div>
             )}
-
-            <Button onClick={submit} disabled={busy || (isRegister && signupBlocked)} className="mt-1 w-full">
-              {busy ? 'Подождите…' : isRegister ? 'Создать аккаунт' : 'Войти'}
-            </Button>
-
-            <button
-              onClick={() => {
-                setIsRegister(!isRegister)
-                reset()
-              }}
-              className="text-center text-[13px] font-semibold text-lada"
-            >
-              {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
-            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   )
 }
 
-/** Инструкция для владельца проекта: как сделать, чтобы письма не мешали */
-function MailFix() {
-  return (
-    <details className="mt-2 text-[12px] leading-relaxed">
-      <summary className="cursor-pointer font-semibold">Что сделать владельцу проекта</summary>
-      <ol className="mt-1.5 list-decimal space-y-1 pl-4">
-        <li>
-          <span className="font-semibold">Быстро (регистрация заработает сразу, писем не будет):</span>{' '}
-          Supabase Dashboard → Authentication → Sign In / Up → Email → выключить «Confirm email».
-        </li>
-        <li>
-          <span className="font-semibold">Правильно (письма на любые адреса, включая .ru):</span>{' '}
-          Authentication → Emails → SMTP Settings → подключить свой SMTP (Resend, Brevo, Unisender,
-          Яндекс 360) и поднять лимит в Authentication → Rate Limits.
-        </li>
-        <li>
-          Или одной командой из репозитория: <code>npm run supabase:auth -- --no-confirm</code>{' '}
-          (подробности — в README).
-        </li>
-      </ol>
-    </details>
-  )
-}
-
-function InfoBox({
+function AlertBox({
   tone,
   title,
   children,
 }: {
-  tone: 'warn' | 'info'
+  tone: 'warn' | 'danger'
   title: string
   children: ReactNode
 }) {
   const styles =
-    tone === 'warn'
-      ? 'border-warning/40 bg-warning/10 text-[#9a6700]'
-      : 'border-lada/30 bg-lada-light text-lada'
+    tone === 'danger'
+      ? 'border-[#EF4444]/45 bg-[#EF4444]/10 text-[#EF4444]'
+      : 'border-[#F5A623]/45 bg-[#F5A623]/10 text-[#F5A623]'
   return (
-    <div className={`rounded-2xl border px-4 py-3 ${styles}`}>
-      <p className="text-[13px] font-bold">{title}</p>
-      <div className="mt-1.5 text-[12.5px] leading-relaxed">{children}</div>
+    <div className={`rounded-[10px] border p-3.5 text-[12px] ${styles}`}>
+      <div className="flex items-start gap-2">
+        <InfoIcon className="mt-0.5 h-4 w-4 shrink-0" />
+        <div>
+          <p className="font-bold text-[#F3F4F4]">{title}</p>
+          <p className="mt-1 leading-relaxed text-[#A9AFB7]">{children}</p>
+        </div>
+      </div>
     </div>
   )
 }
 
-function MiniButton({
+function SmallActionButton({
   children,
   onClick,
   disabled,
-  tone = 'danger',
+  tone = 'default',
 }: {
   children: ReactNode
-  onClick: () => void
+  onClick(): void
   disabled?: boolean
-  tone?: 'danger' | 'success'
+  tone?: 'default' | 'success'
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-lg px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors disabled:opacity-50 ${
-        tone === 'danger' ? 'bg-white/70 text-danger hover:bg-white' : 'bg-white/70 text-success hover:bg-white'
+      className={`min-h-[36px] rounded-[8px] border px-3 py-1 text-[12px] font-semibold transition-colors disabled:opacity-45 ${
+        tone === 'success'
+          ? 'border-[#16B374]/45 bg-[#23272D] text-[#F3F4F4] hover:border-[#16B374]'
+          : 'border-[#363B43] bg-[#23272D] text-[#F3F4F4] hover:border-[#E33337]'
       }`}
     >
       {children}
     </button>
+  )
+}
+
+function SmtpFixHint() {
+  return (
+    <details className="mt-1 rounded-[8px] border border-[#363B43] bg-[#0E1013]/80 px-3 py-2 text-[11.5px] text-[#A9AFB7]">
+      <summary className="cursor-pointer font-semibold text-[#F3F4F4]">
+        Как владельцу проекта починить отправку писем (30 сек)
+      </summary>
+      <ol className="mt-2 list-decimal space-y-1 pl-4 leading-relaxed">
+        <li>
+          Быстро: в Supabase Dashboard откройте{' '}
+          <strong className="text-[#F3F4F4]">Authentication → Sign In / Up → Email</strong> и выключите{' '}
+          <strong className="text-[#F3F4F4]">Confirm email</strong>.
+        </li>
+        <li>
+          Либо из терминала выполните:{' '}
+          <code className="rounded bg-[#23272D] px-1.5 py-0.5 font-mono text-[11px] text-[#F3F4F4]">
+            SUPABASE_ACCESS_TOKEN=sbp_xxx npm run supabase:auth -- --no-confirm
+          </code>
+        </li>
+      </ol>
+    </details>
   )
 }

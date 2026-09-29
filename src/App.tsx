@@ -12,7 +12,7 @@ import GaragePage from './pages/GaragePage'
 
 function FullScreenLoader() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-white">
+    <div className="flex min-h-dvh items-center justify-center bg-[#0E1013]">
       <Spinner />
     </div>
   )
