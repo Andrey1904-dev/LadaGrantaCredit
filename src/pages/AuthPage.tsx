@@ -58,60 +58,73 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-3.5">
-          <Field
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Field
-            label="Пароль"
-            type="password"
-            placeholder="Минимум 6 символов"
-            autoComplete={isRegister ? 'new-password' : 'current-password'}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submit()}
-          />
-
-          {error && (
-            <p className="rounded-xl bg-danger/10 px-3.5 py-2.5 text-[13px] font-medium text-danger">{error}</p>
-          )}
-          {notice && (
-            <p className="rounded-xl bg-success/10 px-3.5 py-2.5 text-[13px] font-medium text-success">{notice}</p>
-          )}
-
-          <Button onClick={submit} disabled={busy} className="mt-1 w-full">
-            {busy ? 'Подождите…' : isRegister ? 'Создать аккаунт' : 'Войти'}
-          </Button>
-
-          <button
-            onClick={() => {
-              setIsRegister(!isRegister)
-              setError('')
-              setNotice('')
-            }}
-            className="text-center text-[13px] font-semibold text-lada"
-          >
-            {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
-          </button>
-        </div>
-      </div>
-
-      {mode === 'demo' && (
-        <div className="pb-8">
-          <div className="mb-3 rounded-2xl bg-card px-4 py-3 text-[12px] leading-relaxed text-muted">
-            Supabase не настроен (нет ключей в <code>.env</code>) — приложение работает в демо-режиме,
-            данные хранятся локально в браузере.
+        {mode === 'demo' ? (
+          /* Демо-режим: настоящий вход и регистрация невозможны —
+             не показываем форму, которая молча заводила в демо */
+          <div className="flex flex-col gap-3.5">
+            <div className="rounded-2xl border border-warning/40 bg-warning/10 px-4 py-3.5">
+              <p className="text-[14px] font-bold text-[#9a6700]">Вход и регистрация отключены</p>
+              <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#9a6700]">
+                Эта сборка приложения сделана без ключей Supabase, поэтому создать настоящий
+                аккаунт или войти по email невозможно — данные было бы некуда сохранять.
+                Доступен только демо-режим: данные хранятся в браузере и не синхронизируются.
+              </p>
+              <p className="mt-2.5 text-[12px] leading-relaxed text-[#9a6700]">
+                <span className="font-bold">Как включить:</span> локально — скопируйте{' '}
+                <code>.env.example</code> в <code>.env</code> и укажите ключи проекта Supabase;
+                на GitHub Pages — добавьте секреты <code>VITE_SUPABASE_URL</code> и{' '}
+                <code>VITE_SUPABASE_ANON_KEY</code> в Settings → Secrets and variables → Actions
+                и запустите деплой заново.
+              </p>
+            </div>
+            <Button variant="secondary" className="w-full" onClick={() => void enterDemo()}>
+              Войти в демо-режим
+            </Button>
           </div>
-          <Button variant="secondary" className="w-full" onClick={() => void enterDemo()}>
-            Войти в демо-режим
-          </Button>
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-col gap-3.5">
+            <Field
+              label="Email"
+              type="email"
+              placeholder="you@example.com"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Field
+              label="Пароль"
+              type="password"
+              placeholder="Минимум 6 символов"
+              autoComplete={isRegister ? 'new-password' : 'current-password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && submit()}
+            />
+
+            {error && (
+              <p className="rounded-xl bg-danger/10 px-3.5 py-2.5 text-[13px] font-medium text-danger">{error}</p>
+            )}
+            {notice && (
+              <p className="rounded-xl bg-success/10 px-3.5 py-2.5 text-[13px] font-medium text-success">{notice}</p>
+            )}
+
+            <Button onClick={submit} disabled={busy} className="mt-1 w-full">
+              {busy ? 'Подождите…' : isRegister ? 'Создать аккаунт' : 'Войти'}
+            </Button>
+
+            <button
+              onClick={() => {
+                setIsRegister(!isRegister)
+                setError('')
+                setNotice('')
+              }}
+              className="text-center text-[13px] font-semibold text-lada"
+            >
+              {isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться'}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

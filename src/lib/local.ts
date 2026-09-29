@@ -167,8 +167,13 @@ const localAuth: AuthApi = {
     return DEMO_USER
   },
   async signUp() {
-    localStorage.setItem(KEYS.session, '1')
-    return { user: DEMO_USER, session: true }
+    // В демо-режиме настоящую регистрацию выполнить невозможно:
+    // молча заходить в демо (как раньше) — обман пользователя,
+    // поэтому явно отказываем.
+    throw new Error(
+      'Регистрация недоступна: приложение собрано без ключей Supabase (демо-режим). ' +
+        'Укажите VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в .env или в секретах GitHub.',
+    )
   },
   async signOut() {
     localStorage.removeItem(KEYS.session)
