@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "supabase:auth": "node scripts/supabase-auth-setup.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

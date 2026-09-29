@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
+import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react'
 
 /** Базовые UI-примитивы дизайн-системы LADA */
 
@@ -31,12 +31,16 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   hint?: string
 }
 
-export function Field({ label, suffix, hint, className = '', ...props }: FieldProps) {
+export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
+  { label, suffix, hint, className = '', ...props },
+  ref,
+) {
   return (
     <label className={`block ${className}`}>
       <span className="mb-1.5 block text-[13px] font-medium text-muted">{label}</span>
       <div className="relative">
         <input
+          ref={ref}
           className={`w-full rounded-xl border border-black/10 bg-white px-3.5 py-3 text-[15px] font-medium text-ink outline-none transition-colors placeholder:font-normal placeholder:text-black/30 focus:border-lada focus:ring-2 focus:ring-lada/15 ${suffix ? 'pr-12' : ''}`}
           {...props}
         />
@@ -49,7 +53,7 @@ export function Field({ label, suffix, hint, className = '', ...props }: FieldPr
       {hint && <span className="mt-1 block text-xs text-muted">{hint}</span>}
     </label>
   )
-}
+})
 
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
