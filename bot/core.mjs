@@ -36,17 +36,33 @@ export const CATEGORY_LABELS = {
   insurance: 'Страхование',
   other: 'Прочее',
 }
+const CATEGORY_EMOJI = {
+  fuel: '⛽',
+  loan: '💳',
+  maintenance: '🧰',
+  insurance: '🛡',
+  other: '📦',
+}
+
+/** Визуальный разделитель экранов бота — единый «брендовый» штрих. */
+const RULE = '<b>━━━━━━━━━━━━</b>'
 
 export const HELP_TEXT = [
-  '<b>КОМАНДЫ LADA ASSISTANT</b>',
+  '<b>ℹ️ ПОМОЩЬ · LADA ASSISTANT</b>',
+  RULE,
   '',
+  '<b>Разделы кабинета</b>',
   '/garage — автомобиль и ОСАГО',
   '/service — записи ТО и документы',
   '/spending — расходы текущего месяца',
   '/credit — остаток и дата платежа',
-  '/link — безопасно подключить сайт',
+  '',
+  '<b>Управление</b>',
+  '/menu — главное меню',
+  '/link — подключить личный кабинет',
   '/unlink — отозвать доступ',
-  '/start — главное меню',
+  '',
+  '<i>Подсказка: работают и слова — «гараж», «то», «расходы», «кредит», «меню».</i>',
 ].join('\n')
 
 export const BOT_DESCRIPTION =
@@ -54,11 +70,12 @@ export const BOT_DESCRIPTION =
 export const BOT_SHORT_DESCRIPTION = 'Цифровой гараж LADA: автомобиль, ТО, расходы и кредит.'
 export const BOT_COMMANDS = [
   { command: 'start', description: 'Главное меню' },
-  { command: 'link', description: 'Подключить личный кабинет' },
+  { command: 'menu', description: 'Главное меню' },
   { command: 'garage', description: 'Автомобиль и ОСАГО' },
   { command: 'service', description: 'ТО и документы' },
   { command: 'spending', description: 'Расходы за месяц' },
   { command: 'credit', description: 'Остаток и платёж по кредиту' },
+  { command: 'link', description: 'Подключить личный кабинет' },
   { command: 'unlink', description: 'Отключить личный кабинет' },
   { command: 'help', description: 'Список команд' },
 ]
@@ -83,20 +100,66 @@ export function readBearerToken(headerValue) {
   return match[1]
 }
 
+/**
+ * Экран, который показываем, пока кабинет не привязан.
+ * Рядом всегда кнопка мгновенной генерации кода — один тап вместо команды.
+ */
 export function unlinkedMessage() {
   return [
-    '<b>Сначала подключите сайт</b>',
-    'Откройте личный кабинет, перейдите в раздел «Бот» и нажмите /link здесь.',
-    'Одноразовый код действует 10 минут. Пароль сайта отправлять не нужно.',
-  ].join('\n\n')
+    '<b>🔒 Сначала подключите сайт</b>',
+    RULE,
+    '',
+    'Сводки появятся прямо здесь, как только Telegram будет связан с кабинетом.',
+    'Пароль сайта не нужен — только одноразовый код на 10 минут.',
+    '',
+    '<i>Нажмите «Подключить кабинет» — бот пришлёт код — и введите его в разделе «Бот» на сайте.</i>',
+  ].join('\n')
 }
 
-function insuranceLine(insuranceUntil) {
-  const remaining = daysUntil(insuranceUntil)
-  if (remaining === null) return 'ОСАГО: дата окончания не указана'
-  if (remaining < 0) return `ОСАГО: срок истёк ${Math.abs(remaining)} ${plural(Math.abs(remaining), 'день', 'дня', 'дней')} назад`
-  if (remaining === 0) return 'ОСАГО: срок заканчивается сегодня'
-  return `ОСАГО до ${escapeHtml(formatDate(insuranceUntil))} · ${remaining} ${plural(remaining, 'день', 'дня', 'дней')}`
+/** Заголовок экрана: эмодзи + капсовый тайтл + фирменная линия. */
+function screenTitle(emoji, title) {
+  return [`<b>${emoji} ${title.toUpperCase()}</b>`, RULE, '']
+}
+
+/** Строка показателя: иконка, подпись и значение. */
+function statLine(icon, label, value) {
+  return `${icon} ${label} — <b>${escapeHtml(value)}</b>`
+}
+
+/** Текстовый прогресс-бар: ratio в диапазоне 0…1, слотов `slots`. */
+export function progressBar(ratio, slots = 10) {
+  const clamped = Math.min(1, Math.max(0, Number(ratio) || 0))
+  // Доля больше нуля всегда видна: иначе 4 % выглядит как сломанный пустой бар.
+  const filled = clamped > 0 ? Math.max(1, Math.round(clamped * slots)) : 0
+  return '▰'.repeat(filled) + '▱'.repeat(Math.max(0, slots - filled))
+}
+
+const monthNominative = new Intl.DateTimeFormat('ru-RU', {
+  month: 'long',
+  timeZone: 'Europe/Moscow',
+})
+
+/** Строка статуса ОСАГО со «светофором» и обратным отсчётом. */
+function insuranceStatusLine(insuranceUntil, now = new Date()) {
+  const remaining = daysUntil(insuranceUntil, now)
+  if (remaining === null) return ['🛡 ОСАГО — дата окончания не указана', '']
+  const until = escapeHtml(formatDate(insuranceUntil))
+  if (remaining < 0) {
+    const days = Math.abs(remaining)
+    return [
+      `🔴 ОСАГО — истёк ${days} ${plural(days, 'день', 'дня', 'дней')} назад`,
+      `<i>Продлите полис: езда без ОСАГО — штраф и полная оплата чужого ремонта при ДТП.</i>`,
+    ]
+  }
+  if (remaining === 0) return ['🟡 ОСАГО — срок заканчивается сегодня', '<i>Успейте продлить полис сегодня.</i>']
+  const left = plural(remaining, 'день', 'дня', 'дней')
+  if (remaining <= 30) {
+    return [
+      `🟡 ОСАГО — до ${until} · осталось ${remaining} ${left}`,
+      '<i>Срок на исходе — стоит продлить заранее.</i>',
+    ]
+  }
+  return [`🟢 ОСАГО — до ${until} · в запасе ${remaining} ${left}`, '']
 }
 
 /**
@@ -275,20 +338,59 @@ export function createBot({
     }
   }
 
-  function mainKeyboard() {
-    const rows = [
+  /** Кнопка перехода в веб-кабинет (если адрес сайта настроен). */
+  function cabinetRow() {
+    const url = siteCabinetUrl()
+    return url ? [[{ text: '↗ Открыть кабинет', url }]] : []
+  }
+
+  /**
+   * Клавиатура для чата, который ещё не привязан:
+   * код генерируется одним тапом — команда /link сама не нужна.
+   */
+  function connectKeyboard() {
+    return { inline_keyboard: [[{ text: '🔗 Подключить кабинет', callback_data: 'link' }], ...cabinetRow()] }
+  }
+
+  /** Главное меню: четыре раздела кабинета + кабинет на сайте. */
+  function mainKeyboard(linked = true) {
+    const rows = []
+    if (!linked) rows.push([{ text: '🔗 Подключить кабинет', callback_data: 'link' }])
+    rows.push(
       [
-        { text: '🚘 Мой гараж', callback_data: 'garage' },
+        { text: '🚘 Гараж', callback_data: 'garage' },
         { text: '🧰 ТО и документы', callback_data: 'service' },
       ],
       [
         { text: '📊 Расходы', callback_data: 'spending' },
         { text: '💳 Автокредит', callback_data: 'credit' },
       ],
-    ]
-    const url = siteCabinetUrl()
-    if (url) rows.push([{ text: '↗ Открыть кабинет', url }])
+      ...cabinetRow(),
+    )
     return { inline_keyboard: rows }
+  }
+
+  /**
+   * Контекстная клавиатура экрана раздела: соседние разделы,
+   * «Обновить» текущий и возврат в меню. Всё — в рамках одного сообщения.
+   */
+  function sectionKeyboard(current) {
+    const sections = [
+      ['garage', '🚘 Гараж'],
+      ['service', '🧰 ТО'],
+      ['spending', '📊 Расходы'],
+      ['credit', '💳 Кредит'],
+    ].filter(([key]) => key !== current)
+    return {
+      inline_keyboard: [
+        sections.map(([key, label]) => ({ text: label, callback_data: key })),
+        [
+          { text: '↻ Обновить', callback_data: current },
+          { text: '🏠 Меню', callback_data: 'menu' },
+        ],
+        ...cabinetRow(),
+      ],
+    }
   }
 
   async function sendMessage(chatId, text, extra = {}) {
@@ -299,6 +401,39 @@ export function createBot({
       disable_web_page_preview: true,
       ...extra,
     })
+  }
+
+  /** Индикатор «печатает…», пока идёт чтение кабинета. Ошибки игнорируем. */
+  async function sendTyping(chatId) {
+    try {
+      await telegramCall('sendChatAction', { chat_id: chatId, action: 'typing' })
+    } catch {
+      // Индикатор не критичен: молча продолжаем.
+    }
+  }
+
+  /**
+   * «Живой экран»: редактирует сообщение по месту вместо нового в чате.
+   * Если телеграм не даёт редактировать (старое сообщение, фото с подписью) —
+   * отправляет свежее сообщение. Дубль («not modified») молча проглатываем.
+   */
+  async function updateScreen(chatId, messageId, text, markup) {
+    try {
+      await telegramCall('editMessageText', {
+        chat_id: chatId,
+        message_id: messageId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+        reply_markup: markup,
+      })
+      return true
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : ''
+      if (/not modified/i.test(reason)) return true
+      await sendMessage(chatId, text, { reply_markup: markup })
+      return false
+    }
   }
 
   async function getLinkedUserId(chatId) {
@@ -350,71 +485,154 @@ export function createBot({
     return Object.fromEntries([['userId', userId], ...fields])
   }
 
-  async function showGarage(chatId) {
-    const data = await ownerData(chatId, ['car'])
-    if (!data) return sendMessage(chatId, unlinkedMessage(), { reply_markup: mainKeyboard() })
-    if (!data.car) {
-      return sendMessage(chatId, '<b>Гараж пока пуст</b>\nДобавьте автомобиль на сайте — после этого сводка появится здесь.', {
-        reply_markup: mainKeyboard(),
-      })
+  /* ------------------------------------------------------- Screen builders --- */
+  /* Каждый экран возвращает { text, markup } — дальше один и тот же экран     */
+  /* приходит новым сообщением (команда) или редактирует старое (кнопка).      */
+
+  function menuScreen(linked) {
+    const lines = [
+      '<b>🏁 LADA ASSISTANT</b>  <i>· цифровой гараж Granta Sport</i>',
+      RULE,
+      '',
+    ]
+    if (linked) {
+      lines.push(
+        '🚘 <b>Гараж</b> — пробег и статус ОСАГО',
+        '🧰 <b>ТО</b> — журнал обслуживания и документы',
+        '📊 <b>Расходы</b> — траты текущего месяца',
+        '💳 <b>Кредит</b> — долг и ближайший платёж',
+        '',
+        '<i>Выберите раздел кнопкой — экран обновится на месте, без лишних сообщений.</i>',
+      )
+    } else {
+      lines.push(
+        'Меню оболочки уже готово. Подключите кабинет кнопкой ниже —',
+        'и сводки автомобиля, ТО, расходов и кредита появятся прямо здесь.',
+        '',
+        '<i>Можно заглянуть в разделы и до привязки — бот подскажет, что делать.</i>',
+      )
     }
-    const text = [
-      '<b>МОЙ ГАРАЖ</b>',
-      '',
-      '<b>LADA Granta Sport</b>',
-      `Пробег: <b>${escapeHtml(formatMileage(data.car.current_mileage))}</b>`,
-      insuranceLine(data.car.insurance_until),
-      '',
-      '<i>Сводка синхронизирована с кабинетом сайта.</i>',
-    ].join('\n')
-    return sendMessage(chatId, text, { reply_markup: mainKeyboard() })
+    return { text: lines.join('\n'), markup: mainKeyboard(linked) }
   }
 
-  async function showService(chatId) {
+  const UNLINK_CONFIRM_TEXT = [
+    '<b>⛓ ОТКЛЮЧИТЬ КАБИНЕТ?</b>',
+    RULE,
+    '',
+    'Бот потеряет доступ к сводкам автомобиля, ТО, расходов и кредита.',
+    'На сайте данные останутся — отключается только Telegram.',
+    '',
+    '<i>Подключить обратно можно в любой момент по новому коду.</i>',
+  ].join('\n')
+
+  const UNLINK_CONFIRM_MARKUP = {
+    inline_keyboard: [
+      [{ text: '❌ Да, отключить доступ', callback_data: 'unlink_confirm' }],
+      [{ text: '◂ Назад в меню', callback_data: 'menu' }],
+    ],
+  }
+
+  function emptyScreen(text) {
+    return { text, markup: mainKeyboard(true) }
+  }
+
+  async function buildGarageScreen(chatId) {
+    const data = await ownerData(chatId, ['car'])
+    if (!data) return { text: unlinkedMessage(), markup: connectKeyboard() }
+    if (!data.car) {
+      return emptyScreen([
+        ...screenTitle('🚘', 'Мой гараж'),
+        '<b>Гараж пока пуст.</b>',
+        'Добавьте автомобиль в кабинете на сайте — сводка появится здесь автоматически.',
+      ].join('\n'))
+    }
+    const [insurance, insuranceHint] = insuranceStatusLine(data.car.insurance_until, new Date(now()))
+    const lines = [
+      ...screenTitle('🚘', 'Мой гараж'),
+      '<b>LADA Granta Sport</b>',
+      statLine('🏁', 'Пробег', formatMileage(data.car.current_mileage)),
+      insurance,
+    ]
+    if (insuranceHint) lines.push(insuranceHint)
+    lines.push('', '<i>Синхронизировано с личным кабинетом.</i>')
+    return { text: lines.join('\n'), markup: sectionKeyboard('garage') }
+  }
+
+  async function buildServiceScreen(chatId) {
     const data = await ownerData(chatId, ['car', 'maintenance'])
-    if (!data) return sendMessage(chatId, unlinkedMessage(), { reply_markup: mainKeyboard() })
-    const lines = ['<b>ТО И ДОКУМЕНТЫ</b>', '']
-    if (data.car) lines.push(insuranceLine(data.car.insurance_until), '')
+    if (!data) return { text: unlinkedMessage(), markup: connectKeyboard() }
+    const lines = screenTitle('🧰', 'ТО и документы')
+    if (data.car) {
+      const [insurance, insuranceHint] = insuranceStatusLine(data.car.insurance_until, new Date(now()))
+      lines.push(insurance)
+      if (insuranceHint) lines.push(insuranceHint)
+      lines.push('', RULE, '')
+    }
     if (data.maintenance.length) {
-      lines.push('<b>Последние записи журнала:</b>')
+      lines.push('<b>Последние работы</b>')
       for (const record of data.maintenance.slice(0, 4)) {
         const description = escapeHtml(record.description || 'Работы без описания')
-        lines.push(`• ${description} · ${escapeHtml(formatMileage(record.mileage))} · ${escapeHtml(formatDate(record.date))}`)
+        lines.push(`▸ ${description}\n   ${escapeHtml(formatMileage(record.mileage))} · ${escapeHtml(formatDate(record.date))}`)
       }
+      lines.push('', '<i>Полный журнал и регламент ТО — в разделе «ТО» кабинета.</i>')
     } else {
-      lines.push('Журнал обслуживания пока пуст. Записи можно добавить в разделе «ТО» на сайте.')
+      lines.push(
+        '<b>Журнал обслуживания пока пуст.</b>',
+        'Добавляйте записи в разделе «ТО» на сайте — они появятся здесь.',
+      )
     }
-    return sendMessage(chatId, lines.join('\n'), { reply_markup: mainKeyboard() })
+    return { text: lines.join('\n'), markup: sectionKeyboard('service') }
   }
 
-  async function showSpending(chatId) {
+  async function buildSpendingScreen(chatId) {
     const data = await ownerData(chatId, ['transactions'])
-    if (!data) return sendMessage(chatId, unlinkedMessage(), { reply_markup: mainKeyboard() })
-    const rows = monthTransactions(data.transactions)
+    if (!data) return { text: unlinkedMessage(), markup: connectKeyboard() }
+    const rows = monthTransactions(data.transactions, new Date(now()))
     const total = rows.reduce((sum, item) => sum + Number(item.amount || 0), 0)
     const byCategory = new Map()
     for (const item of rows) {
       byCategory.set(item.category, (byCategory.get(item.category) ?? 0) + Number(item.amount || 0))
     }
     const top = [...byCategory.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
-    const lines = ['<b>РАСХОДЫ С НАЧАЛА МЕСЯЦА</b>', '', `Итого: <b>${escapeHtml(formatMoney(total))}</b>`]
-    if (top.length) {
-      lines.push('', ...top.map(([category, amount]) => `• ${CATEGORY_LABELS[category] ?? 'Прочее'} — ${escapeHtml(formatMoney(amount))}`))
+    const monthName = String(monthNominative.format(new Date(now()))).toUpperCase()
+    const lines = [
+      ...screenTitle('📊', `Расходы · ${monthName}`),
+      `Итого: <b>${escapeHtml(formatMoney(total))}</b> · ${rows.length} ${plural(rows.length, 'операция', 'операции', 'операций')}`,
+      '',
+    ]
+    if (top.length && total > 0) {
+      for (const [category, amount] of top) {
+        const label = CATEGORY_LABELS[category] ?? 'Прочее'
+        const emoji = CATEGORY_EMOJI[category] ?? '📦'
+        const share = Math.round((amount / total) * 100)
+        lines.push(
+          `${emoji} ${progressBar(amount / total, 8)} <b>${escapeHtml(label)}</b> — ${escapeHtml(formatMoney(amount))} · ${share}%`,
+        )
+      }
+    } else if (top.length) {
+      for (const [category, amount] of top) {
+        const label = CATEGORY_LABELS[category] ?? 'Прочее'
+        lines.push(`▸ ${escapeHtml(label)} — ${escapeHtml(formatMoney(amount))}`)
+      }
     } else {
-      lines.push('', 'В этом месяце расходов пока нет.')
+      lines.push('В этом месяце расходов пока нет — отличный повод ничего не ломать.', '')
     }
-    return sendMessage(chatId, lines.join('\n'), { reply_markup: mainKeyboard() })
+    lines.push('', '<i>По операциям кабинета за текущий месяц.</i>')
+    return { text: lines.join('\n'), markup: sectionKeyboard('spending') }
   }
 
-  async function showCredit(chatId) {
+  async function buildCreditScreen(chatId) {
     const data = await ownerData(chatId, ['loan', 'transactions'])
-    if (!data) return sendMessage(chatId, unlinkedMessage(), { reply_markup: mainKeyboard() })
+    if (!data) return { text: unlinkedMessage(), markup: connectKeyboard() }
     if (!data.loan) {
-      return sendMessage(chatId, '<b>Кредит не добавлен</b>\nДобавьте кредит в личном кабинете, чтобы видеть остаток и дату платежа.', {
-        reply_markup: mainKeyboard(),
-      })
+      return emptyScreen([
+        ...screenTitle('💳', 'Автокредит'),
+        '<b>Кредит не добавлен.</b>',
+        'Укажите его в кабинете на сайте — остаток и даты платежей будут здесь.',
+      ].join('\n'))
     }
     const paidMonths = data.transactions.filter((item) => item.category === 'loan').length
+    const term = Math.round(Number(data.loan.term_months)) || 0
     const balance = remainingLoanBalance(
       data.loan.total_amount,
       data.loan.interest_rate,
@@ -422,29 +640,70 @@ export function createBot({
       paidMonths,
       data.loan.monthly_payment,
     )
-    const paymentDate = nextPaymentDate(data.loan.start_date)
+    const paymentDate = nextPaymentDate(data.loan.start_date, new Date(now()))
+    const progress = term > 0 ? Math.min(1, paidMonths / term) : 0
+    const percent = Math.round(progress * 100)
     const lines = [
-      '<b>АВТОКРЕДИТ</b>',
+      ...screenTitle('💳', 'Автокредит'),
+      `${progressBar(progress, 16)} <b>${percent}%</b>`,
       '',
-      `Расчётный остаток: <b>${escapeHtml(formatMoney(balance))}</b>`,
-      `Ежемесячный платёж: ${escapeHtml(formatMoney(data.loan.monthly_payment))}`,
-      `Ближайшая дата: ${paymentDate ? escapeHtml(formatDate(paymentDate)) : 'не рассчитана'}`,
-      '',
-      '<i>Оценка рассчитана по числу платежей, отмеченных в кабинете. Сверяйте точный остаток с банком.</i>',
+      statLine('🏦', 'Расчётный остаток', formatMoney(balance)),
+      statLine('📅', 'Ежемесячный платёж', formatMoney(data.loan.monthly_payment)),
     ]
-    return sendMessage(chatId, lines.join('\n'), { reply_markup: mainKeyboard() })
+    if (term > 0) {
+      const shown = Math.min(paidMonths, term)
+      lines.push(`✅ Внесено — <b>${shown} из ${term}</b> ${plural(term, 'платежа', 'платежей', 'платежей')}`)
+    }
+    if (paymentDate) {
+      const inDays = daysUntil(paymentDate.toISOString().slice(0, 10), new Date(now()))
+      const countdown = inDays === null
+        ? ''
+        : inDays < 0
+          ? ''
+          : inDays === 0
+            ? ' · <b>сегодня</b>'
+            : ` · через <b>${inDays} ${plural(inDays, 'день', 'дня', 'дней')}</b>`
+      lines.push(statLine('⏳', 'Ближайший платёж', formatDate(paymentDate)) + countdown)
+    }
+    lines.push('', '<i>Оценка по отметкам платежей в кабинете. Точный остаток сверяйте с банком.</i>')
+    return { text: lines.join('\n'), markup: sectionKeyboard('credit') }
+  }
+
+  const SCREEN_BUILDERS = {
+    garage: buildGarageScreen,
+    service: buildServiceScreen,
+    spending: buildSpendingScreen,
+    credit: buildCreditScreen,
   }
 
   async function showWelcome(chatId, firstName = '') {
     const userId = await getLinkedUserId(chatId)
     const name = firstName ? `, ${escapeHtml(firstName)}` : ''
     const intro = userId
-      ? `<b>С возвращением${name}.</b>\nВаш цифровой гараж LADA Granta Sport готов.`
-      : `<b>Добро пожаловать${name}.</b>\nLADA Assistant — быстрый доступ к вашему цифровому гаражу.`
-    const help = userId
-      ? 'Выберите нужный раздел или отправьте команду. Данные обновляются из личного кабинета.'
-      : 'Подключите кабинет командой /link — и сводки появятся прямо здесь.'
-    const text = `${intro}\n\n${help}`
+      ? [
+          `<b>🏁 С возвращением${name}.</b>`,
+          '<i>Цифровой гараж LADA Granta Sport — на связи.</i>',
+          RULE,
+          '',
+          '🚘 <b>Гараж</b> — пробег и статус ОСАГО',
+          '🧰 <b>ТО</b> — журнал обслуживания',
+          '📊 <b>Расходы</b> — траты месяца',
+          '💳 <b>Кредит</b> — долг и ближайший платёж',
+          '',
+          '<i>Кнопки ниже переключают разделы на месте — чат не засоряется.</i>',
+        ]
+      : [
+          `<b>🏁 Добро пожаловать${name}.</b>`,
+          '<i>LADA Assistant — персональный помощник владельца Granta Sport.</i>',
+          RULE,
+          '',
+          'Пробег и ОСАГО, история обслуживания, расходы и остаток автокредита —',
+          'всё из вашего личного кабинета, прямо в этом чате.',
+          '',
+          '<i>Подключите кабинет кнопкой ниже — займёт меньше минуты.</i>',
+        ]
+    const text = intro.join('\n')
+    const markup = mainKeyboard(Boolean(userId))
     const photo = siteAssetUrl('images/telegram-assistant-avatar.jpg')
     if (photo) {
       try {
@@ -453,18 +712,24 @@ export function createBot({
           photo,
           caption: text,
           parse_mode: 'HTML',
-          reply_markup: mainKeyboard(),
+          reply_markup: markup,
         })
       } catch (error) {
         logger.warn?.('[telegram] branded welcome image skipped:', error instanceof Error ? error.message : 'image unavailable')
       }
     }
-    return sendMessage(chatId, text, { reply_markup: mainKeyboard() })
+    return sendMessage(chatId, text, { reply_markup: markup })
   }
 
   async function createLink(chatId, telegramUserId) {
     if (await getLinkedUserId(chatId)) {
-      return sendMessage(chatId, '<b>Этот Telegram уже подключён.</b>\nЧтобы сменить аккаунт, сначала отправьте /unlink.')
+      return sendMessage(chatId, [
+        '<b>🔗 КАБИНЕТ УЖЕ ПОДКЛЮЧЁН</b>',
+        RULE,
+        '',
+        'Этот Telegram уже связан с кабинетом. Чтобы сменить аккаунт,',
+        'сначала отключите текущий — /unlink.',
+      ].join('\n'), { reply_markup: mainKeyboard(true) })
     }
 
     const staleCodes = makeSearch({ telegram_chat_id: `eq.${chatId}`, used_at: 'is.null' })
@@ -487,14 +752,19 @@ export function createBot({
 
     const formatted = `${code.slice(0, 5)}-${code.slice(5)}`
     const text = [
-      '<b>КОД ПОДКЛЮЧЕНИЯ</b>',
+      '<b>🔗 КОД ПОДКЛЮЧЕНИЯ</b>',
+      RULE,
       '',
-      `<code>${formatted}</code>`,
+      `<b><code>${formatted}</code></b>`,
       '',
-      'Введите его в разделе «Бот» на сайте. Код одноразовый и действует 10 минут.',
-      '<i>Не пересылайте код другим людям.</i>',
+      '1️⃣ Откройте сайт → раздел «Бот»',
+      '2️⃣ Введите код из этого сообщения',
+      '3️⃣ Сводки гаража появятся прямо здесь',
+      '',
+      '<i>⏱ Код одноразовый · действует 10 минут</i>',
+      '<i>Не пересылайте код посторонним — это ключ к вашему кабинету.</i>',
     ].join('\n')
-    return sendMessage(chatId, text)
+    return sendMessage(chatId, text, { reply_markup: cabinetRow().length ? { inline_keyboard: cabinetRow() } : undefined })
   }
 
   async function unlinkChat(chatId) {
@@ -505,20 +775,72 @@ export function createBot({
     })
     const linked = Array.isArray(result) ? result.length > 0 : true
     if (!linked) {
-      return sendMessage(chatId, 'Этот Telegram не связан с кабинетом. Для подключения используйте /link.')
+      return { ok: false }
     }
-    return sendMessage(chatId, '<b>Связь удалена.</b>\nБот больше не имеет доступа к данным кабинета.')
+    return { ok: true }
   }
 
-  async function runAction(chatId, action, firstName = '') {
-    switch (action) {
-      case 'garage': return showGarage(chatId)
-      case 'service': return showService(chatId)
-      case 'spending': return showSpending(chatId)
-      case 'credit': return showCredit(chatId)
-      case 'menu': return showWelcome(chatId, firstName)
-      default: return sendMessage(chatId, HELP_TEXT, { reply_markup: mainKeyboard() })
+  /** Отправка экрана новым сообщением (команда из чата). */
+  async function sendScreen(chatId, screen) {
+    return sendMessage(chatId, screen.text, { reply_markup: screen.markup })
+  }
+
+  /** Редактирование экрана по месту (inline-кнопка). */
+  async function editScreen(chatId, messageId, screen) {
+    return updateScreen(chatId, messageId, screen.text, screen.markup)
+  }
+
+  /** Экран по имени действия; данные — свежие, со статусом «печатает…». */
+  async function runAction(chatId, action, { messageId = null, telegramUserId = null } = {}) {
+    if (action === 'link') {
+      return createLink(chatId, telegramUserId ?? chatId)
     }
+    if (action === 'unlink') {
+      // Двухшаговое отключение: сначала экран подтверждения.
+      return messageId === null
+        ? sendScreen(chatId, { text: UNLINK_CONFIRM_TEXT, markup: UNLINK_CONFIRM_MARKUP })
+        : editScreen(chatId, messageId, { text: UNLINK_CONFIRM_TEXT, markup: UNLINK_CONFIRM_MARKUP })
+    }
+    if (action === 'unlink_confirm') {
+      const outcome = await unlinkChat(chatId)
+      const screen = outcome.ok
+        ? {
+            text: [
+              '<b>✅ ДОСТУП ОТОЗВАН</b>',
+              RULE,
+              '',
+              'Связь удалена: бот больше не видит данные кабинета.',
+              '',
+              '<i>Подключить обратно можно в любой момент — /link.</i>',
+            ].join('\n'),
+            markup: connectKeyboard(),
+          }
+        : {
+            text: [
+              '<b>⛓ КАБИНЕТ НЕ ПОДКЛЮЧЁН</b>',
+              RULE,
+              '',
+              'Этот Telegram и так не связан с кабинетом.',
+              '',
+              '<i>Для подключения — /link или кнопка ниже.</i>',
+            ].join('\n'),
+            markup: connectKeyboard(),
+          }
+      return messageId === null ? sendScreen(chatId, screen) : editScreen(chatId, messageId, screen)
+    }
+    if (action === 'menu') {
+      await sendTyping(chatId)
+      const userId = await getLinkedUserId(chatId)
+      const screen = menuScreen(Boolean(userId))
+      return messageId === null ? sendScreen(chatId, screen) : editScreen(chatId, messageId, screen)
+    }
+    const builder = SCREEN_BUILDERS[action]
+    if (builder) {
+      await sendTyping(chatId)
+      const screen = await builder(chatId)
+      return messageId === null ? sendScreen(chatId, screen) : editScreen(chatId, messageId, screen)
+    }
+    return sendMessage(chatId, HELP_TEXT, { reply_markup: mainKeyboard(Boolean(await getLinkedUserId(chatId))) })
   }
 
   async function handleMessage(message) {
@@ -529,24 +851,45 @@ export function createBot({
 
     const [firstToken] = text.split(/\s+/, 1)
     const command = firstToken.toLowerCase().split('@')[0]
-    if (command === '/start') return showWelcome(chat.id, message.from.first_name)
-    if (command === '/help') return sendMessage(chat.id, HELP_TEXT, { reply_markup: mainKeyboard() })
-    if (command === '/link') return createLink(chat.id, message.from.id)
-    if (command === '/unlink') return unlinkChat(chat.id)
-    if (command === '/garage' || text.toLowerCase() === 'гараж') return showGarage(chat.id)
-    if (command === '/service' || text.toLowerCase() === 'то') return showService(chat.id)
-    if (command === '/spending' || text.toLowerCase() === 'расходы') return showSpending(chat.id)
-    if (command === '/credit' || text.toLowerCase() === 'кредит') return showCredit(chat.id)
-    if (command.startsWith('/')) return sendMessage(chat.id, HELP_TEXT, { reply_markup: mainKeyboard() })
-    return sendMessage(chat.id, 'Используйте кнопки меню или /help — покажу доступные команды.', {
-      reply_markup: mainKeyboard(),
-    })
+    const word = text.toLowerCase()
+    if (command === '/start' || command === '/menu' || word === 'меню' || word === 'menu') {
+      return showWelcome(chat.id, message.from.first_name)
+    }
+    if (command === '/help' || word === 'помощь') {
+      const userId = await getLinkedUserId(chat.id)
+      return sendMessage(chat.id, HELP_TEXT, { reply_markup: mainKeyboard(Boolean(userId)) })
+    }
+    if (command === '/link' || word === 'подключить') return createLink(chat.id, message.from.id)
+    if (command === '/unlink' || word === 'отключить') {
+      return runAction(chat.id, 'unlink', { telegramUserId: message.from.id })
+    }
+    if (command === '/garage' || word === 'гараж') return runAction(chat.id, 'garage')
+    if (command === '/service' || word === 'то' || word === 'сервис') return runAction(chat.id, 'service')
+    if (command === '/spending' || word === 'расходы' || word === 'траты') return runAction(chat.id, 'spending')
+    if (command === '/credit' || word === 'кредит') return runAction(chat.id, 'credit')
+    if (command.startsWith('/')) {
+      const userId = await getLinkedUserId(chat.id)
+      return sendMessage(chat.id, HELP_TEXT, { reply_markup: mainKeyboard(Boolean(userId)) })
+    }
+    return sendMessage(chat.id, [
+      '<b>🤖 НЕ РАСПОЗНАЛ ЗАПРОС</b>',
+      RULE,
+      '',
+      'Используйте кнопки меню, команды (/help) или слова:',
+      '<b>гараж</b> · <b>то</b> · <b>расходы</b> · <b>кредит</b> · <b>меню</b>.',
+    ].join('\n'), { reply_markup: mainKeyboard(Boolean(await getLinkedUserId(chat.id))) })
   }
 
   async function handleCallback(callback) {
     if (!callback?.message?.chat || callback.message.chat.type !== 'private') return
+    const chatId = callback.message.chat.id
+    const messageId = callback.message.message_id
+    const action = String(callback.data ?? '')
     await telegramCall('answerCallbackQuery', { callback_query_id: callback.id })
-    return runAction(callback.message.chat.id, String(callback.data ?? ''), callback.from?.first_name ?? '')
+    return runAction(chatId, action, {
+      messageId: Number.isInteger(messageId) ? messageId : null,
+      telegramUserId: callback.from?.id ?? null,
+    })
   }
 
   /** Обрабатывает один update Telegram (webhook или polling). */
@@ -601,5 +944,6 @@ export function createBot({
     mainKeyboard,
     sendMessage,
     siteCabinetUrl,
+    progressBar,
   }
 }

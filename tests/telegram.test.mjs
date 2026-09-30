@@ -142,6 +142,49 @@ test('ядро бота отвечает на команды и создаёт �
   const before = sent.length
   await bot.handleUpdate({ message: { from: { id: 7 }, chat: { id: -100, type: 'group' }, text: '/link' } })
   assert.equal(sent.length, before)
+
+  // Inline-кнопки работают как живой экран: подтверждаем callback и
+  // редактируем исходное сообщение, а не плодим новые.
+  await bot.handleUpdate({
+    callback_query: {
+      id: 'cb-42',
+      from: { id: 7, first_name: 'Андрей' },
+      data: 'garage',
+      message: { message_id: 99, chat: { id: 777, type: 'private' } },
+    },
+  })
+  assert.equal(sent.at(-3).method, 'answerCallbackQuery')
+  assert.equal(sent.at(-2).method, 'sendChatAction')
+  assert.equal(sent.at(-1).method, 'editMessageText')
+  assert.equal(sent.at(-1).body.message_id, 99)
+  assert.match(sent.at(-1).body.text, /Сначала подключите сайт/)
+  // На экране без привязки есть кнопка мгновенной генерации кода.
+  const keyboards = sent.at(-1).body.reply_markup.inline_keyboard.flat()
+  assert.ok(keyboards.some((button) => button.callback_data === 'link'))
+
+  // Деструктивное действие требует подтверждения вторым тапом.
+  await bot.handleUpdate({
+    callback_query: {
+      id: 'cb-43',
+      from: { id: 7 },
+      data: 'unlink',
+      message: { message_id: 100, chat: { id: 777, type: 'private' } },
+    },
+  })
+  assert.equal(sent.at(-1).method, 'editMessageText')
+  assert.match(sent.at(-1).body.text, /ОТКЛЮЧИТЬ КАБИНЕТ\?/)
+  const confirmButtons = sent.at(-1).body.reply_markup.inline_keyboard.flat()
+  assert.ok(confirmButtons.some((button) => button.callback_data === 'unlink_confirm'))
+})
+
+test('текстовый прогресс-бар бота стабилен на границах', async () => {
+  const { progressBar } = await import('../bot/core.mjs')
+  assert.equal(progressBar(0, 8), '▱▱▱▱▱▱▱▱')
+  assert.equal(progressBar(1, 8), '▰▰▰▰▰▰▰▰')
+  assert.equal(progressBar(0.5, 8), '▰▰▰▰▱▱▱▱')
+  assert.equal(progressBar(2, 8), '▰▰▰▰▰▰▰▰')
+  assert.equal(progressBar(-1, 8), '▱▱▱▱▱▱▱▱')
+  assert.equal(progressBar(Number.NaN, 8), '▱▱▱▱▱▱▱▱')
 })
 
 test('healthReport не считает бота здоровым без свежих обновлений', async () => {
