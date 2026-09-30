@@ -1,16 +1,15 @@
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import {
   ArrowUpRight,
   Bot,
-  CalendarDays,
   Check,
   ChevronRight,
   Clock3,
   CreditCard,
-  Fuel,
   Gauge,
   Link2,
   LockKeyhole,
+  LoaderCircle,
   MessageCircle,
   Send,
   ShieldCheck,
@@ -27,10 +26,12 @@ import { fmtDate, fmtMileage, fmtMoney } from '../utils/format'
 import { remainingBalance } from '../utils/loan'
 import { PAGE_MEDIA } from '../lib/assets'
 import {
+  checkTelegramHealth,
   isTelegramConfigured,
   requestTelegram,
   TELEGRAM_BOT_URL,
   TELEGRAM_BOT_USERNAME,
+  type TelegramApiHealth,
   type TelegramLinkStatus,
 } from '../lib/telegram'
 
@@ -39,6 +40,10 @@ const COMMANDS = [
   { command: '/service', title: 'ТО и документы', detail: 'Журнал обслуживания', Icon: Wrench },
   { command: '/spending', title: 'Расходы', detail: 'Итог за текущий месяц', Icon: Wallet },
   { command: '/credit', title: 'Автокредит', detail: 'Остаток и ближайший платёж', Icon: CreditCard },
+  { command: '/link', title: 'Подключить кабинет', detail: 'Связать Telegram с сайтом', Icon: Link2 },
+  { command: '/unlink', title: 'Отключить кабинет', detail: 'Отозвать доступ к данным', Icon: Unlink },
+  { command: '/help', title: 'Помощь', detail: 'Показать все команды', Icon: MessageCircle },
+  { command: '/start', title: 'Главное меню', detail: 'Открыть меню бота', Icon: Bot },
 ]
 
 export default function TelegramPage() {
@@ -51,8 +56,36 @@ export default function TelegramPage() {
   const [notice, setNotice] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
+  const [apiHealth, setApiHealth] = useState<TelegramApiHealth | null>(null)
+  const [healthState, setHealthState] = useState<'checking' | 'online' | 'offline' | 'unknown'>('checking')
+  const [healthError, setHealthError] = useState('')
+  const [activeCommand, setActiveCommand] = useState('garage')
 
   const isDemo = mode === 'demo'
+
+  const refreshHealth = useCallback(async () => {
+    if (isDemo || !isTelegramConfigured) {
+      setApiHealth(null)
+      setHealthError('')
+      setHealthState('unknown')
+      return
+    }
+    setHealthState('checking')
+    setHealthError('')
+    try {
+      const health = await checkTelegramHealth()
+      setApiHealth(health)
+      setHealthState(health.ok ? 'online' : 'offline')
+    } catch (error) {
+      setApiHealth(null)
+      setHealthState('offline')
+      setHealthError(error instanceof Error ? error.message : 'Не удалось проверить API Telegram')
+    }
+  }, [isDemo])
+
+  useEffect(() => {
+    void refreshHealth()
+  }, [refreshHealth])
 
   const currentMonthSpend = useMemo(() => {
     const monthStart = startOfMonth()
@@ -248,6 +281,55 @@ export default function TelegramPage() {
         }
       />
 
+      <Card className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border ${
+            healthState === 'online'
+              ? 'border-[#16B374]/30 bg-[#16B374]/10 text-[#16B374]'
+              : healthState === 'checking'
+                ? 'border-[#363B43] bg-[#23272D] text-[#A9AFB7]'
+                : 'border-[#F5A623]/30 bg-[#F5A623]/[0.08] text-[#F5A623]'
+          }`}>
+            {healthState === 'checking' ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <span className="h-2 w-2 rounded-full bg-current" />}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[12.5px] font-bold text-[#F3F4F4]">
+              {healthState === 'online'
+                ? 'Telegram API работает'
+                : healthState === 'checking'
+                  ? 'Проверяем Telegram API…'
+                  : healthState === 'unknown' && isDemo
+                    ? 'Проверка недоступна в демо-режиме'
+                    : healthState === 'unknown'
+                      ? 'Telegram API не настроен'
+                      : 'Telegram API недоступен'}
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-[#A9AFB7]">
+              {healthError || (healthState === 'online'
+                ? `Бот ${apiHealth?.botPolling === 'online' ? 'получает обновления' : 'доступен'}${apiHealth?.lastSuccessfulPollAt ? ` · последняя проверка ${fmtDate(apiHealth.lastSuccessfulPollAt)}` : ''}.`
+                : healthState === 'offline' && apiHealth?.botPolling
+                  ? `Состояние polling: ${apiHealth.botPolling}. ${apiHealth.configured === false ? 'Проверьте настройки токена и имени бота на сервере.' : 'Сервер отвечает, но обработка обновлений пока не подтверждена.'}`
+                  : healthState === 'unknown' && isDemo
+                    ? 'Перейдите в облачный аккаунт, чтобы проверить интеграцию.'
+                    : healthState === 'unknown'
+                      ? 'Задайте публичное имя бота и URL API в переменных сборки.'
+                      : 'Проверьте доступность API и повторите проверку.'
+              )}
+            </p>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => void refreshHealth()}
+          disabled={healthState === 'checking' || !isTelegramConfigured || isDemo}
+          className="min-h-[36px] shrink-0 px-3 py-1.5 text-[11.5px]"
+        >
+          <LoaderCircle className={`h-3.5 w-3.5 ${healthState === 'checking' ? 'animate-spin' : ''}`} />
+          Проверить снова
+        </Button>
+      </Card>
+
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(340px,1.08fr)]">
         <Card className="relative overflow-hidden p-0">
           <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-[#E33337]/[0.07] blur-3xl" />
@@ -384,6 +466,11 @@ export default function TelegramPage() {
           serviceState={serviceState}
           monthlySpend={fmtMoney(currentMonthSpend)}
           connected={linkState === 'linked'}
+          loanSummary={loanRemaining === null ? 'Кредит не указан' : fmtMoney(loanRemaining)}
+          nextPayment={loan ? fmtDate(nextPaymentDate(loan.start_date)) : '—'}
+          maintenanceCount={maintenance.length}
+          activeCommand={activeCommand}
+          onSelectCommand={setActiveCommand}
         />
       </section>
 
@@ -399,12 +486,18 @@ export default function TelegramPage() {
               </h2>
             </div>
             <span className="rounded-[6px] border border-[#363B43] bg-[#0E1013] px-2 py-1 font-mono text-[10px] text-[#A9AFB7]">
-              04 / 08
+              08 / 08
             </span>
           </div>
           <div className="grid gap-px bg-[#363B43]/60 sm:grid-cols-2">
             {COMMANDS.map(({ command, title, detail, Icon }) => (
-              <div key={command} className="flex items-center gap-3 bg-[#1A1D22] p-3.5 sm:p-4">
+              <button
+                key={command}
+                type="button"
+                onClick={() => setActiveCommand(command.slice(1))}
+                aria-pressed={activeCommand === command.slice(1)}
+                className={`flex w-full items-center gap-3 p-3.5 text-left transition sm:p-4 ${activeCommand === command.slice(1) ? 'bg-[#24282E]' : 'bg-[#1A1D22] hover:bg-[#20242A]'}`}
+              >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border border-[#363B43] bg-[#23272D] text-[#E33337]">
                   <Icon className="h-4 w-4" />
                 </span>
@@ -416,7 +509,7 @@ export default function TelegramPage() {
                   <p className="mt-0.5 truncate text-[11px] text-[#A9AFB7]">{detail}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 shrink-0 text-[#626A74]" />
-              </div>
+              </button>
             ))}
           </div>
         </Card>
@@ -512,6 +605,11 @@ function TelegramPreview({
   serviceState,
   monthlySpend,
   connected,
+  loanSummary,
+  nextPayment,
+  maintenanceCount,
+  activeCommand,
+  onSelectCommand,
 }: {
   carLabel: string
   mileage: string
@@ -519,19 +617,35 @@ function TelegramPreview({
   serviceState: 'ok' | 'soon' | 'due' | 'overdue'
   monthlySpend: string
   connected: boolean
+  loanSummary: string
+  nextPayment: string
+  maintenanceCount: number
+  activeCommand: string
+  onSelectCommand: (command: string) => void
 }) {
   const serviceTone = serviceState === 'overdue'
     ? 'text-[#EF4444]'
     : serviceState === 'ok'
       ? 'text-[#16B374]'
       : 'text-[#F5A623]'
+  const previewResponse = {
+    garage: { title: 'Сводка гаража', detail: `${carLabel} · ${mileage}`, extra: serviceLabel },
+    service: { title: 'Обслуживание и документы', detail: serviceLabel, extra: `Записей в журнале: ${maintenanceCount}` },
+    spending: { title: 'Расходы за текущий месяц', detail: monthlySpend, extra: 'Сумма рассчитана по операциям кабинета' },
+    credit: { title: 'Автокредит', detail: `Остаток: ${loanSummary}`, extra: `Ближайший платёж: ${nextPayment}` },
+    link: { title: 'Подключение кабинета', detail: connected ? 'Аккаунт Telegram подключён' : 'Аккаунт пока не подключён', extra: connected ? 'Доступ можно отозвать на сайте командой /unlink' : 'Запросите одноразовый код командой /link' },
+    unlink: { title: 'Отключение кабинета', detail: 'Связь можно безопасно отозвать', extra: 'Подтверждение выполняется командой /unlink' },
+    help: { title: 'Команды помощника', detail: '/garage · /service · /spending · /credit', extra: '/link · /unlink · /help · /start' },
+    start: { title: 'Главное меню', detail: 'LADA Assistant — цифровой гараж', extra: 'Выберите команду в меню бота' },
+  }[activeCommand] ?? { title: 'Сводка гаража', detail: `${carLabel} · ${mileage}`, extra: serviceLabel }
+  const selectedCommand = COMMANDS.find((item) => item.command === `/${activeCommand}`)
   return (
     <Card className="relative overflow-hidden p-0">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_0%,rgba(227,51,55,0.12),transparent_42%)]" />
       <div className="relative flex items-center justify-between border-b border-[#363B43]/80 px-4 py-3.5 sm:px-5">
         <div>
           <p className="font-display-num text-[10px] font-bold uppercase tracking-[0.2em] text-[#E33337]">
-            Live preview
+            Interactive preview
           </p>
           <h2 className="mt-0.5 font-display-num text-[17px] font-bold uppercase tracking-wide text-[#F3F4F4]">
             Так выглядит ваш бот
@@ -566,30 +680,16 @@ function TelegramPreview({
               СЕГОДНЯ · LADA ASSISTANT
             </p>
             <div className="max-w-[93%] rounded-[13px] rounded-tl-[4px] border border-[#303842] bg-[#222A32] p-3 shadow-sm">
-              <p className="text-[11.5px] font-semibold text-[#F3F4F4]">Добрый день. Ваш гараж на связи.</p>
+              <p className="text-[11.5px] font-semibold text-[#F3F4F4]">{previewResponse.title}</p>
               <p className="mt-1 text-[10px] leading-relaxed text-[#A9AFB7]">
-                Короткая сводка по автомобилю и делам — в одном сообщении.
+                {previewResponse.detail}
               </p>
               <div className="mt-2.5 rounded-[9px] border border-[#3A434D] bg-[#191F26] p-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-[8.5px] font-bold uppercase tracking-[0.16em] text-[#8995A1]">Автомобиль</p>
-                    <p className="mt-1 text-[10.5px] font-bold text-[#F3F4F4]">{carLabel}</p>
-                    <p className="mt-0.5 font-mono text-[9px] text-[#A9AFB7]">{mileage}</p>
-                  </div>
-                  <span className="rounded-[5px] border border-[#E33337]/35 bg-[#E33337]/10 px-1.5 py-1 font-display-num text-[8px] font-bold tracking-[0.1em] text-[#F16A6D]">
-                    SPORT
-                  </span>
-                </div>
-                <div className="my-2 h-px bg-[#303842]" />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-start gap-2">
+                  <ShieldCheck className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${serviceTone}`} />
                   <div className="min-w-0">
-                    <p className="text-[8px] font-bold uppercase tracking-[0.13em] text-[#8995A1]">Следить</p>
-                    <p className={`mt-1 truncate text-[9.5px] font-semibold ${serviceTone}`}>{serviceLabel}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[8px] font-bold uppercase tracking-[0.13em] text-[#8995A1]">Расходы</p>
-                    <p className="mt-1 text-[9.5px] font-semibold text-[#F3F4F4]">{monthlySpend}</p>
+                    <p className="text-[8px] font-bold uppercase tracking-[0.13em] text-[#8995A1]">Ответ бота · {connected ? 'аккаунт связан' : 'режим предпросмотра'}</p>
+                    <p className="mt-1 text-[9.5px] font-semibold text-[#F3F4F4]">{previewResponse.extra}</p>
                   </div>
                 </div>
               </div>
@@ -597,33 +697,32 @@ function TelegramPreview({
             </div>
 
             <div className="ml-auto w-fit rounded-[11px] rounded-tr-[4px] bg-[#3B5266] px-3 py-2 font-mono text-[10px] text-[#F5F7F9]">
-              /garage
+              {selectedCommand?.command ?? '/garage'}
             </div>
 
             <div className="max-w-[87%] rounded-[12px] rounded-tl-[4px] border border-[#303842] bg-[#222A32] p-2.5">
               <div className="flex items-center gap-2 text-[9.5px] font-semibold text-[#F3F4F4]">
                 <ShieldCheck className="h-3.5 w-3.5 text-[#16B374]" />
-                Данные обновлены из кабинета
+                {connected ? 'Сводка из кабинета' : 'Демонстрация · кабинет не подключён'}
               </div>
               <p className="mt-1.5 text-[9px] leading-relaxed text-[#A9AFB7]">
-                Команды и кнопки ведут к нужному разделу. Никаких таблиц и лишних меню.
+                Интерактивный макет ответа. Нажмите команду ниже или в списке справа.
               </p>
               <p className="mt-1 text-right text-[8px] text-[#788590]">12:48</p>
             </div>
 
             <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-              <span className="inline-flex items-center justify-center gap-1 rounded-[7px] border border-[#3B4651] bg-[#222A32] px-2 py-2 text-[8.5px] font-semibold text-[#D6DDE3]">
-                <Gauge className="h-3 w-3 text-[#E33337]" /> Мой гараж
-              </span>
-              <span className="inline-flex items-center justify-center gap-1 rounded-[7px] border border-[#3B4651] bg-[#222A32] px-2 py-2 text-[8.5px] font-semibold text-[#D6DDE3]">
-                <CalendarDays className="h-3 w-3 text-[#E33337]" /> ТО и события
-              </span>
-              <span className="inline-flex items-center justify-center gap-1 rounded-[7px] border border-[#3B4651] bg-[#222A32] px-2 py-2 text-[8.5px] font-semibold text-[#D6DDE3]">
-                <Fuel className="h-3 w-3 text-[#E33337]" /> Расходы
-              </span>
-              <span className="inline-flex items-center justify-center gap-1 rounded-[7px] border border-[#3B4651] bg-[#222A32] px-2 py-2 text-[8.5px] font-semibold text-[#D6DDE3]">
-                <CreditCard className="h-3 w-3 text-[#E33337]" /> Кредит
-              </span>
+              {COMMANDS.slice(0, 4).map(({ command, title, Icon }) => (
+                <button
+                  key={command}
+                  type="button"
+                  onClick={() => onSelectCommand(command.slice(1))}
+                  aria-pressed={activeCommand === command.slice(1)}
+                  className={`inline-flex min-h-8 items-center justify-center gap-1 rounded-[7px] border px-2 py-2 text-[8.5px] font-semibold transition ${activeCommand === command.slice(1) ? 'border-[#E33337]/60 bg-[#352528] text-white' : 'border-[#3B4651] bg-[#222A32] text-[#D6DDE3] hover:bg-[#2B343E]'}`}
+                >
+                  <Icon className="h-3 w-3 text-[#E33337]" /> {title}
+                </button>
+              ))}
             </div>
           </div>
 
