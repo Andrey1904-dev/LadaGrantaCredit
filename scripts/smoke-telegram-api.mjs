@@ -45,7 +45,7 @@ globalThis.fetch = async (url, init = {}) => {
     const method = href.split('/').pop()
     telegramMethods.push(method)
     if (method === 'getWebhookInfo') return json({ ok: true, result: webhookInfo })
-    if (method === 'sendMessage' || method === 'sendPhoto') {
+    if (method === 'sendMessage' || method === 'sendPhoto' || method === 'editMessageText') {
       sentMessages.push(JSON.parse(init.body))
       return json({ ok: true, result: { message_id: sentMessages.length } })
     }

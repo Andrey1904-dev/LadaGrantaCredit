@@ -38,14 +38,15 @@ import {
 } from '../lib/telegram'
 
 const COMMANDS = [
-  { command: '/garage', title: 'Мой автомобиль', detail: 'Пробег и статус ОСАГО', Icon: Gauge },
+  { command: '/garage', title: 'Мой автомобиль', detail: 'Пробег и светофор ОСАГО', Icon: Gauge },
   { command: '/service', title: 'ТО и документы', detail: 'Журнал обслуживания', Icon: Wrench },
-  { command: '/spending', title: 'Расходы', detail: 'Итог за текущий месяц', Icon: Wallet },
-  { command: '/credit', title: 'Автокредит', detail: 'Остаток и ближайший платёж', Icon: CreditCard },
-  { command: '/link', title: 'Подключить кабинет', detail: 'Связать Telegram с сайтом', Icon: Link2 },
-  { command: '/unlink', title: 'Отключить кабинет', detail: 'Отозвать доступ к данным', Icon: Unlink },
+  { command: '/spending', title: 'Расходы', detail: 'Итог месяца с долями категорий', Icon: Wallet },
+  { command: '/credit', title: 'Автокредит', detail: 'Прогресс, остаток и платёж', Icon: CreditCard },
+  { command: '/link', title: 'Подключить кабинет', detail: 'Код одной кнопкой в чате', Icon: Link2 },
+  { command: '/unlink', title: 'Отключить кабинет', detail: 'Отзыв доступа с подтверждением', Icon: Unlink },
   { command: '/help', title: 'Помощь', detail: 'Показать все команды', Icon: MessageCircle },
-  { command: '/start', title: 'Главное меню', detail: 'Открыть меню бота', Icon: Bot },
+  { command: '/menu', title: 'Главное меню', detail: 'Живой экран разделов', Icon: Bot },
+  { command: '/start', title: 'Приветствие', detail: 'Открыть меню бота', Icon: Bot },
 ]
 
 export default function TelegramPage() {
@@ -499,7 +500,7 @@ export default function TelegramPage() {
               </h2>
             </div>
             <span className="rounded-[6px] border border-[#363B43] bg-[#0E1013] px-2 py-1 font-mono text-[10px] text-[#A9AFB7]">
-              08 / 08
+              {String(COMMANDS.length).padStart(2, '0')} / {String(COMMANDS.length).padStart(2, '0')}
             </span>
           </div>
           <div className="grid gap-px bg-[#363B43]/60 sm:grid-cols-2">
@@ -642,15 +643,16 @@ function TelegramPreview({
       ? 'text-[#16B374]'
       : 'text-[#F5A623]'
   const previewResponse = {
-    garage: { title: 'Сводка гаража', detail: `${carLabel} · ${mileage}`, extra: serviceLabel },
-    service: { title: 'Обслуживание и документы', detail: serviceLabel, extra: `Записей в журнале: ${maintenanceCount}` },
-    spending: { title: 'Расходы за текущий месяц', detail: monthlySpend, extra: 'Сумма рассчитана по операциям кабинета' },
-    credit: { title: 'Автокредит', detail: `Остаток: ${loanSummary}`, extra: `Ближайший платёж: ${nextPayment}` },
-    link: { title: 'Подключение кабинета', detail: connected ? 'Аккаунт Telegram подключён' : 'Аккаунт пока не подключён', extra: connected ? 'Доступ можно отозвать на сайте командой /unlink' : 'Запросите одноразовый код командой /link' },
-    unlink: { title: 'Отключение кабинета', detail: 'Связь можно безопасно отозвать', extra: 'Подтверждение выполняется командой /unlink' },
-    help: { title: 'Команды помощника', detail: '/garage · /service · /spending · /credit', extra: '/link · /unlink · /help · /start' },
-    start: { title: 'Главное меню', detail: 'LADA Assistant — цифровой гараж', extra: 'Выберите команду в меню бота' },
-  }[activeCommand] ?? { title: 'Сводка гаража', detail: `${carLabel} · ${mileage}`, extra: serviceLabel }
+    garage: { title: '🚘 МОЙ ГАРАЖ', detail: `🏁 ${carLabel} · Пробег — ${mileage}`, extra: serviceLabel },
+    service: { title: '🧰 ТО И ДОКУМЕНТЫ', detail: serviceLabel, extra: `▸ Записей в журнале: ${maintenanceCount}` },
+    spending: { title: '📊 РАСХОДЫ · МЕСЯЦ', detail: `Итого: ${monthlySpend}`, extra: '▰▰▰▰▱▱▱▱ Доли категорий считаются по операциям кабинета' },
+    credit: { title: '💳 АВТОКРЕДИТ', detail: `▰▰▰▰▰▰▱▱ Остаток: ${loanSummary}`, extra: `⏳ Ближайший платёж: ${nextPayment}` },
+    link: { title: '🔗 КОД ПОДКЛЮЧЕНИЯ', detail: connected ? 'Аккаунт Telegram подключён' : 'Кнопкой в чате или командой /link', extra: connected ? 'Доступ можно отозвать на сайте командой /unlink' : '⏱ Код одноразовый · действует 10 минут' },
+    unlink: { title: '⛓ ОТКЛЮЧИТЬ КАБИНЕТ?', detail: 'Бот подтвердит действие вторым тапом', extra: 'На сайте данные останутся — отключается только Telegram' },
+    help: { title: 'ℹ️ ПОМОЩЬ · LADA ASSISTANT', detail: '/garage · /service · /spending · /credit', extra: '/menu · /link · /unlink · /help · /start' },
+    menu: { title: '🏁 LADA ASSISTANT', detail: 'Живой экран: кнопки переключают разделы на месте', extra: '🚘 Гараж · 🧰 ТО · 📊 Расходы · 💳 Кредит' },
+    start: { title: '🏁 LADA ASSISTANT', detail: 'Живой экран: кнопки переключают разделы на месте', extra: '🚘 Гараж · 🧰 ТО · 📊 Расходы · 💳 Кредит' },
+  }[activeCommand] ?? { title: '🚘 МОЙ ГАРАЖ', detail: `🏁 ${carLabel} · Пробег — ${mileage}`, extra: serviceLabel }
   const selectedCommand = COMMANDS.find((item) => item.command === `/${activeCommand}`)
   return (
     <Card className="relative overflow-hidden p-0">
@@ -719,7 +721,8 @@ function TelegramPreview({
                 {connected ? 'Сводка из кабинета' : 'Демонстрация · кабинет не подключён'}
               </div>
               <p className="mt-1.5 text-[9px] leading-relaxed text-[#A9AFB7]">
-                Интерактивный макет ответа. Нажмите команду ниже или в списке справа.
+                В живом боте кнопки обновляют это сообщение на месте — чат не засоряется.
+                Нажмите команду ниже или в списке рядом.
               </p>
               <p className="mt-1 text-right text-[8px] text-[#788590]">12:48</p>
             </div>
