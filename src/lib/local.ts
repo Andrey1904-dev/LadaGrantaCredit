@@ -330,6 +330,15 @@ const localData: DataApi = {
     write(KEYS.transactions, next)
     return item
   },
+  async updateTransaction(id: string, tx: NewTransaction) {
+    const list = read<Transaction[]>(KEYS.transactions, [])
+    const index = list.findIndex((item) => item.id === id)
+    if (index < 0) throw new Error('Расход не найден')
+    const updated = { ...list[index], ...tx }
+    list[index] = updated
+    write(KEYS.transactions, list.sort((a, b) => b.date.localeCompare(a.date)))
+    return updated
+  },
   async removeTransaction(id: string) {
     const list = read<Transaction[]>(KEYS.transactions, [])
     write(

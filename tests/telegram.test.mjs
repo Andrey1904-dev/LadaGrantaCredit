@@ -54,6 +54,7 @@ test('remaining loan estimate mirrors site annuity math and clamps at zero', () 
   assert.ok(remainingLoanBalance(principal, 16.9, 60, 12) < principal)
   assert.equal(remainingLoanBalance(120_000, 0, 12, 12), 0)
   assert.equal(remainingLoanBalance(120_000, 0, 12, 6), 60_000)
+  assert.ok(remainingLoanBalance(1_000, 12, 12, 1, 100) < remainingLoanBalance(1_000, 12, 12, 1))
 })
 
 test('monthly summary includes only transactions in the current month', () => {

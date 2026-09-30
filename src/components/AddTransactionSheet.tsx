@@ -21,7 +21,7 @@ export default function AddTransactionSheet({
   initialCategory = 'other',
   editingTransaction = null,
 }: Props) {
-  const { addTransaction, removeTransaction, car, loan, saveCar } = useAppData()
+  const { addTransaction, updateTransaction, car, loan, saveCar } = useAppData()
   const [category, setCategory] = useState<TxCategory>(initialCategory)
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(toDateInputValue(new Date()))
@@ -86,14 +86,16 @@ export default function AddTransactionSheet({
     }
     setSaving(true)
     try {
-      await addTransaction({
+      const transaction = {
         amount: Math.round(value * 100) / 100,
         category,
         date: new Date(date + 'T12:00:00').toISOString(),
         mileage_at_transaction: showMileage ? km : null,
-      })
+      }
       if (editingTransaction) {
-        await removeTransaction(editingTransaction.id)
+        await updateTransaction(editingTransaction.id, transaction)
+      } else {
+        await addTransaction(transaction)
       }
       // если указан пробег больше текущего — синхронизируем одометр автомобиля
       if (showMileage && km !== null && car && km > car.current_mileage) {

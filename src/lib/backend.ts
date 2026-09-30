@@ -66,6 +66,7 @@ export interface DataApi {
 
   listTransactions(uid: string): Promise<Transaction[]>
   addTransaction(uid: string, tx: NewTransaction): Promise<Transaction>
+  updateTransaction(id: string, tx: NewTransaction): Promise<Transaction>
   removeTransaction(id: string): Promise<void>
 
   listMaintenance(uid: string): Promise<MaintenanceRecord[]>

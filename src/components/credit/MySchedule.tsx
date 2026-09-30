@@ -33,6 +33,7 @@ export default function MySchedule() {
       loan.interest_rate,
       loan.term_months,
       paidCount,
+      loan.monthly_payment,
     )
     const elapsed = Math.max(
       0,

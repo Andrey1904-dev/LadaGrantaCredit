@@ -89,6 +89,7 @@ export default function DashboardPage() {
       loan.interest_rate,
       loan.term_months,
       paidCount,
+      loan.monthly_payment,
     )
     const nextDate = nextPaymentDate(loan.start_date)
     const progress =

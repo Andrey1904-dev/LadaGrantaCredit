@@ -29,6 +29,10 @@ const IP_RATE_LIMIT = 40
 const USER_RATE_LIMIT = 8
 const rateBuckets = new Map()
 
+let polling = true
+let pollingStatus = 'starting'
+let lastSuccessfulPollAt = null
+
 class HttpError extends Error {
   constructor(status, message) {
     super(message)
@@ -201,7 +205,16 @@ async function handleApi(request, response) {
   const route = `${request.method} ${url.pathname}`
 
   if (route === 'GET /health') {
-    json(response, 200, { ok: true, service: 'lada-telegram-api' })
+    const tokenConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN)
+    const pollIsFresh = lastSuccessfulPollAt !== null && Date.now() - lastSuccessfulPollAt < 120_000
+    const healthy = tokenConfigured && polling && pollingStatus === 'online' && pollIsFresh
+    json(response, healthy ? 200 : 503, {
+      ok: healthy,
+      service: 'lada-telegram-api',
+      configured: tokenConfigured,
+      botPolling: polling ? pollingStatus : 'stopped',
+      lastSuccessfulPollAt: lastSuccessfulPollAt ? new Date(lastSuccessfulPollAt).toISOString() : null,
+    })
     return
   }
 
@@ -480,6 +493,7 @@ async function showCredit(chatId) {
     data.loan.interest_rate,
     data.loan.term_months,
     paidMonths,
+    data.loan.monthly_payment,
   )
   const paymentDate = nextPaymentDate(data.loan.start_date)
   const lines = [
@@ -637,6 +651,8 @@ async function pollingLoop() {
         timeout: 45,
         allowed_updates: ['message', 'callback_query'],
       }, 55_000)
+      lastSuccessfulPollAt = Date.now()
+      pollingStatus = 'online'
       for (const update of updates ?? []) {
         offset = Math.max(offset, Number(update.update_id) + 1)
         try {
@@ -655,13 +671,12 @@ async function pollingLoop() {
       }
     } catch (error) {
       if (!polling) break
+      pollingStatus = 'degraded'
       console.error('[telegram] polling failed:', error instanceof Error ? error.message : 'unknown error')
       await new Promise((resolve) => setTimeout(resolve, 3_000))
     }
   }
 }
-
-let polling = true
 
 export async function start() {
   validateEnvironment()
