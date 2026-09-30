@@ -233,13 +233,9 @@ npm run dev
    - `SUPABASE_SERVICE_ROLE_KEY` — секретный service-role key, **только на сервере**;
    - `WEB_APP_URL` — публичный адрес кабинета, например `https://andrey1904-dev.github.io/LadaGrantaCredit/`;
    - `CORS_ALLOWED_ORIGINS` — дополнительные origin сайта, если их несколько.
-4. Запустите API и long-polling бота на постоянном Node.js-хостинге (Node 20.6+, рекомендуется Node 22):
+4. Разверните постоянный Node.js web service (Node 20.6+, рекомендуется Node 22) из корня репозитория: install/build command — `npm ci`, start command — `npm run bot:start`. Перенесите переменные из `bot/.env` в **секреты/Environment Variables хостинга** (сам файл `.env` в продакшене не нужен). Процесс слушает `0.0.0.0:$PORT` (по умолчанию `3001`); хостинг должен выдавать публичный HTTPS-домен и не усыплять polling-процесс. Запускайте одну polling-инстанцию для токена.
 
-   ```bash
-   npm run bot:start
-   ```
-
-   Процесс слушает `0.0.0.0:$PORT` (по умолчанию `3001`); для продакшена перед ним нужен HTTPS reverse proxy или managed-хостинг. Запускайте одну polling-инстанцию для токена.
+   Для локальной разработки скопируйте `bot/.env.example` в `bot/.env` и используйте `npm run bot:local`.
 5. В `.env.local` сайта задайте публичные настройки (не секреты):
 
    ```dotenv
