@@ -21,7 +21,7 @@ export default function CreditPage() {
     const paid = transactions.filter((t) => t.category === 'loan').length
     return {
       paid,
-      remaining: remainingBalance(loan.total_amount, loan.interest_rate, loan.term_months, paid),
+      remaining: remainingBalance(loan.total_amount, loan.interest_rate, loan.term_months, paid, loan.monthly_payment),
       next: nextPaymentDate(loan.start_date),
     }
   }, [loan, transactions])

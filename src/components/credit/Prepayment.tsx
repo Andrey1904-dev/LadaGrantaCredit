@@ -32,6 +32,7 @@ export default function Prepayment() {
       loan.interest_rate,
       loan.term_months,
       paid,
+      loan.monthly_payment,
     )
     return {
       paid,

@@ -144,7 +144,7 @@ export const SERVICE_ITEMS: ServiceItem[] = [
     forum: { km: 8_000, months: 12 },
     advice:
       'Заводские 15 000 км рассчитаны на идеальные условия. В городе, пробках и зимой владельцы сокращают интервал до 7 500–10 000 км — на 16V это заодно лечит цокот гидрокомпенсаторов.',
-    keywords: ['моторное масло', 'масло двиг', 'масляный фильтр', 'замена масла', 'то-'],
+    keywords: ['моторное масло', 'масло двиг', 'масляный фильтр', 'замена масла'],
     exclude: ['мкпп', 'акпп', 'коробк', 'трансмис'],
     severity: 'high',
     cost: [2_500, 5_500],
@@ -279,6 +279,7 @@ export const SERVICE_ITEMS: ServiceItem[] = [
       'Только для 8-клапанных моторов (гидрокомпенсаторов нет). Признак — звонкий цокот на прогретом двигателе; на форумах регулируют каждые 45 000–60 000 км.',
     engines: ['11182', '11186'],
     keywords: ['клапан', 'зазор'],
+    exclude: ['обратный клапан', 'омыват'],
     severity: 'normal',
     cost: [2_500, 5_000],
   },
@@ -351,7 +352,8 @@ export const SERVICE_ITEMS: ServiceItem[] = [
     forum: { km: 60_000 },
     advice:
       'Хруст в повороте — наружный ШРУС (обычно 60 000–90 000 км). Порванный пыльник убивает шарнир за пару тысяч километров, поэтому смотрят на каждом ТО.',
-    keywords: ['шрус', 'пыльник', 'граната', 'привод'],
+    keywords: ['шрус', 'пыльник', 'граната', 'привод колеса', 'приводной вал'],
+    exclude: ['ремень привод', 'ремень генератор'],
     severity: 'normal',
     cost: [3_000, 8_000],
   },
@@ -475,8 +477,15 @@ const norm = (s: string): string => s.toLowerCase().replace(/ё/g, 'е')
 /** Относится ли запись журнала к этой работе */
 export function recordMatches(item: ServiceItem, description: string): boolean {
   const text = norm(description)
-  if (item.exclude?.some((w) => text.includes(norm(w)))) return false
-  return item.keywords.some((w) => text.includes(norm(w)))
+  const matches = (keyword: string) => {
+    const needle = norm(keyword)
+    // Очень короткие токены вроде «ОЖ»/«АКБ» нельзя искать как подстроки:
+    // иначе «ОЖ» ошибочно находится в словах «можно» и «подъёмник».
+    if (needle.length <= 3) return text.split(/[^a-zа-яё0-9]+/u).includes(needle)
+    return text.includes(needle)
+  }
+  if (item.exclude?.some(matches)) return false
+  return item.keywords.some(matches)
 }
 
 export const intervalFor = (item: ServiceItem, mode: PlanMode): Interval =>

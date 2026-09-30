@@ -64,7 +64,7 @@ export function nextPaymentDate(startDate, from = new Date()) {
   return next
 }
 
-export function remainingLoanBalance(principal, annualRate, termMonths, paidMonths) {
+export function remainingLoanBalance(principal, annualRate, termMonths, paidMonths, scheduledPayment = null) {
   const amount = Number(principal)
   const rate = Number(annualRate) / 12 / 100
   const term = Math.round(Number(termMonths))
@@ -72,9 +72,11 @@ export function remainingLoanBalance(principal, annualRate, termMonths, paidMont
   if (!Number.isFinite(amount) || amount <= 0 || term <= 0) return 0
   if (paid <= 0) return amount
   if (paid >= term) return 0
-  const payment = rate === 0
-    ? amount / term
-    : amount * (rate * (1 + rate) ** term) / ((1 + rate) ** term - 1)
+  const payment = Number.isFinite(Number(scheduledPayment)) && Number(scheduledPayment) > 0
+    ? Number(scheduledPayment)
+    : rate === 0
+      ? amount / term
+      : amount * (rate * (1 + rate) ** term) / ((1 + rate) ** term - 1)
   if (rate === 0) return Math.max(0, amount - payment * paid)
   const factor = (1 + rate) ** paid
   return Math.max(0, amount * factor - payment * (factor - 1) / rate)

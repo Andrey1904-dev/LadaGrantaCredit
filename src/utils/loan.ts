@@ -66,14 +66,14 @@ export function remainingBalance(
   annualPercent: number,
   n: number,
   paidMonths: number,
+  payment = annuityPayment(S, annualPercent, n),
 ): number {
   if (paidMonths <= 0) return S
   if (paidMonths >= n) return 0
   const r = monthlyRate(annualPercent)
-  const P = annuityPayment(S, annualPercent, n)
-  if (r === 0) return Math.max(0, S - P * paidMonths)
+  if (r === 0) return Math.max(0, S - payment * paidMonths)
   const f = Math.pow(1 + r, paidMonths)
-  return Math.max(0, S * f - (P * (f - 1)) / r)
+  return Math.max(0, S * f - (payment * (f - 1)) / r)
 }
 
 /** Сколько процентов от платежа P уходит в проценты в первый месяц (для подсказок) */

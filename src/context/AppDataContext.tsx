@@ -29,6 +29,7 @@ interface AppDataValue {
   saveCar(patch: CarPatch): Promise<Car>
   saveLoan(patch: Required<LoanPatch>): Promise<Loan>
   addTransaction(tx: NewTransaction): Promise<Transaction>
+  updateTransaction(id: string, tx: NewTransaction): Promise<Transaction>
   removeTransaction(id: string): Promise<void>
   addMaintenance(m: NewMaintenance): Promise<MaintenanceRecord>
   removeMaintenance(id: string): Promise<void>
@@ -114,6 +115,16 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const saved = await backend.data.addTransaction(user!.id, tx)
       setTransactions((prev) =>
         [saved, ...prev].sort((a, b) => b.date.localeCompare(a.date)),
+      )
+      return saved
+    },
+
+    async updateTransaction(id, tx) {
+      const saved = await backend.data.updateTransaction(id, tx)
+      setTransactions((prev) =>
+        prev
+          .map((item) => (item.id === id ? saved : item))
+          .sort((a, b) => b.date.localeCompare(a.date)),
       )
       return saved
     },

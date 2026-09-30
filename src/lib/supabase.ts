@@ -188,6 +188,16 @@ const supabaseData: DataApi = {
     if (error) throw new Error(error.message)
     return data as Transaction
   },
+  async updateTransaction(id: string, tx: NewTransaction) {
+    const { data, error } = await getSupabase()
+      .from('transactions')
+      .update(tx)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    return data as Transaction
+  },
   async removeTransaction(id: string) {
     const { error } = await getSupabase().from('transactions').delete().eq('id', id)
     if (error) throw new Error(error.message)

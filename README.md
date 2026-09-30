@@ -272,8 +272,18 @@ Backend endpoints: `GET /health`, `GET /api/telegram/link/status`, `POST /api/te
 
    Без ключей деплой **упадёт с понятной ошибкой** (шаг «Проверить ключи Supabase»),
    чтобы на Pages не опубликовалась сборка без работающей регистрации.
-3. Запушьте в `main` — workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
-   соберёт `dist` (с `base: '/LadaGrantaCredit/'`) и опубликует на Pages.
+
+   > Добавляйте публичные `VITE_*` именно как **Repository variables** в
+   > **Settings → Secrets and variables → Actions → Variables**. Переменные,
+   > созданные внутри GitHub Environment, доступны только job'ам, назначенным
+   > на это конкретное окружение; сборочный job использует repository-level
+   > variables и не подключён к окружению `github-pages`.
+3. Откройте PR в `main` — workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
+   запустит `npm run check` (типы, 59 основных + 7 Telegram-тестов, smoke-проверки и сборка),
+   но не будет публиковать Preview. После слияния в `main` те же проверки пройдут повторно,
+   `dist` соберётся с `base: '/LadaGrantaCredit/'` и опубликуется на Pages.
+   GitHub Actions используют Node 24-compatible релизы и закреплённый runner
+   `ubuntu-24.04`, чтобы не получать предупреждения о runtime и миграции `ubuntu-latest`.
 
 ## Структура
 

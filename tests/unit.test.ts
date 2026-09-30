@@ -20,6 +20,7 @@ import {
   buildServicePlan,
   computeServiceStatus,
   engineInfo,
+  recordMatches,
   intervalFor,
 } from '../src/lib/service'
 import { TAX_REGIONS, taxDueDate, taxRateFor, transportTax } from '../src/lib/tax'
@@ -83,6 +84,12 @@ describe('аннуитет', () => {
     assert.equal(remainingBalance(1_000_000, 12, 12, 12), 0)
     const half = remainingBalance(1_000_000, 12, 12, 6)
     assert.ok(half > 480_000 && half < 520_000, `остаток после 6 из 12: ${half}`)
+  })
+
+  it('учитывает фактический платёж из банковского графика', () => {
+    const balance = remainingBalance(1_000, 12, 12, 1, 100)
+    near(balance, 910, 0.001)
+    assert.notEqual(balance, remainingBalance(1_000, 12, 12, 1))
   })
 })
 
@@ -339,6 +346,20 @@ describe('регламент ТО', () => {
     assert.ok(s.remainingKm! < 0)
   })
 
+  it('не приписывает ТО по общему слову и фильтрует короткие совпадения', () => {
+    const coolant = SERVICE_ITEMS.find((item) => item.id === 'coolant')!
+    const valves = SERVICE_ITEMS.find((item) => item.id === 'valve-clearance')!
+    const cvJoints = SERVICE_ITEMS.find((item) => item.id === 'cv-joints')!
+    const oilItem = SERVICE_ITEMS.find((item) => item.id === 'oil')!
+
+    assert.equal(recordMatches(coolant, 'Ремонт, можно ездить дальше'), false)
+    assert.equal(recordMatches(coolant, 'Автомобиль на подъёмнике'), false)
+    assert.equal(recordMatches(valves, 'Замена обратного клапана омывателя'), false)
+    assert.equal(recordMatches(cvJoints, 'Замена приводного ремня генератора'), false)
+    assert.equal(recordMatches(oilItem, 'ТО-1'), false, 'общее ТО не подтверждает замену масла')
+    assert.equal(recordMatches(coolant, 'Замена ОЖ'), true)
+  })
+
   it('масло в МКПП не считается моторным', () => {
     const s = computeServiceStatus(oil, {
       ...ctx,
@@ -536,6 +557,15 @@ describe('локальный (демо) бэкенд', () => {
       mileage_at_transaction: null,
     })
     assert.equal((await backend.data.listTransactions(user.id)).length, before + 1)
+    const updated = await backend.data.updateTransaction(added.id, {
+      amount: 1_500,
+      category: 'fuel',
+      date: '2026-01-02T12:00:00.000Z',
+      mileage_at_transaction: 48_500,
+    })
+    assert.equal(updated.id, added.id, 'редактирование сохраняет id записи')
+    assert.equal(updated.amount, 1_500)
+    assert.equal((await backend.data.listTransactions(user.id)).length, before + 1, 'нет дубликата расхода')
     await backend.data.removeTransaction(added.id)
     assert.equal((await backend.data.listTransactions(user.id)).length, before)
 

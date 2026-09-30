@@ -480,6 +480,7 @@ async function showCredit(chatId) {
     data.loan.interest_rate,
     data.loan.term_months,
     paidMonths,
+    data.loan.monthly_payment,
   )
   const paymentDate = nextPaymentDate(data.loan.start_date)
   const lines = [

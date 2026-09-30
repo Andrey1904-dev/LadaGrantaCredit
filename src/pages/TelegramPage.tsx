@@ -77,7 +77,7 @@ export default function TelegramPage() {
 
   const paidPayments = transactions.filter((item) => item.category === 'loan').length
   const loanRemaining = loan
-    ? remainingBalance(loan.total_amount, loan.interest_rate, loan.term_months, paidPayments)
+    ? remainingBalance(loan.total_amount, loan.interest_rate, loan.term_months, paidPayments, loan.monthly_payment)
     : null
 
   useEffect(() => {
