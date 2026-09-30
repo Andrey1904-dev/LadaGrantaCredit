@@ -17,7 +17,7 @@ import {
 
 test('one-time Telegram codes are readable, normalized and hashed consistently', () => {
   const code = createLinkCode((size) => Buffer.from([0, 1, 2, 3, 4].slice(0, size)))
-  assert.equal(code, '00010-20304')
+  assert.equal(code, '0001020304')
   assert.equal(normalizeLinkCode(code.toLowerCase()), '0001020304')
   assert.equal(hashLinkCode(code), hashLinkCode('0001020304'))
   assert.notEqual(hashLinkCode(code), hashLinkCode('0001020305'))
@@ -73,4 +73,90 @@ test('Russian plural helper chooses correct forms', () => {
   assert.equal(plural(4, 'день', 'дня', 'дней'), 'дня')
   assert.equal(plural(12, 'день', 'дня', 'дней'), 'дней')
   assert.equal(plural(22, 'день', 'дня', 'дней'), 'дня')
+})
+
+test('edge-копии ядра бота совпадают с bot/core.mjs и bot/format.mjs', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const { fileURLToPath } = await import('node:url')
+  const path = await import('node:path')
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+  const pairs = [
+    ['bot/core.mjs', 'supabase/functions/telegram-api/core.mjs'],
+    ['bot/format.mjs', 'supabase/functions/telegram-api/format.mjs'],
+  ]
+  for (const [source, copy] of pairs) {
+    const [a, b] = await Promise.all([
+      readFile(path.join(root, source), 'utf8'),
+      readFile(path.join(root, copy), 'utf8'),
+    ])
+    assert.equal(b, a, `${copy} должен быть копией ${source} (обновите копию)`)
+  }
+})
+
+test('createLinkCode не зависит от Buffer и работает на Web Crypto', async () => {
+  const { createLinkCode } = await import('../bot/format.mjs')
+  const code = createLinkCode()
+  assert.match(code, /^[0-9A-F]{10}$/)
+})
+
+test('ядро бота отвечает на команды и создаёт код привязки', async () => {
+  const { createBot } = await import('../bot/core.mjs')
+  const sent = []
+  const rest = []
+  const bot = createBot({
+    telegramToken: '8703956173:TEST-TOKEN-0123456789abcdefghij',
+    supabaseUrl: 'https://project.supabase.co',
+    supabaseAnonKey: 'anon',
+    supabaseServiceRoleKey: 'service',
+    webAppUrl: 'https://andrey1904-dev.github.io/LadaGrantaCredit/',
+    now: () => Date.parse('2026-09-30T12:00:00Z'),
+    logger: { warn() {}, error() {} },
+    fetchImpl: async (url, init = {}) => {
+      const href = String(url)
+      if (href.startsWith('https://api.telegram.org/')) {
+        sent.push({ method: href.split('/').pop(), body: init.body ? JSON.parse(init.body) : null })
+        return new Response(JSON.stringify({ ok: true, result: {} }), { headers: { 'Content-Type': 'application/json' } })
+      }
+      rest.push(href)
+      if (href.includes('/rest/v1/telegram_links')) return new Response('[]', { headers: { 'Content-Type': 'application/json' } })
+      if (href.includes('/rest/v1/telegram_link_codes') && init.method === 'POST') {
+        return new Response(null, { status: 201 })
+      }
+      return new Response('null', { headers: { 'Content-Type': 'application/json' } })
+    },
+  })
+
+  await bot.handleUpdate({
+    message: { from: { id: 7, first_name: 'Андрей' }, chat: { id: 777, type: 'private' }, text: '/link' },
+  })
+  const linkMessage = sent.at(-1)
+  assert.equal(linkMessage.method, 'sendMessage')
+  assert.match(linkMessage.body.text, /КОД ПОДКЛЮЧЕНИЯ/)
+  assert.match(linkMessage.body.text, /[0-9A-F]{5}-[0-9A-F]{5}/)
+  assert.ok(rest.some((href) => href.includes('/rest/v1/telegram_link_codes')))
+
+  await bot.handleUpdate({ message: { from: { id: 7 }, chat: { id: 777, type: 'private' }, text: '/help' } })
+  assert.equal(sent.at(-1).body.text.includes('/garage'), true)
+
+  // Личные чаты и посторонние сообщения игнорируются.
+  const before = sent.length
+  await bot.handleUpdate({ message: { from: { id: 7 }, chat: { id: -100, type: 'group' }, text: '/link' } })
+  assert.equal(sent.length, before)
+})
+
+test('healthReport не считает бота здоровым без свежих обновлений', async () => {
+  const { createBot } = await import('../bot/core.mjs')
+  const bot = createBot({
+    telegramToken: '8703956173:TEST-TOKEN-0123456789abcdefghij',
+    supabaseUrl: 'https://project.supabase.co',
+    supabaseAnonKey: 'anon',
+    supabaseServiceRoleKey: 'service',
+    fetchImpl: async () => new Response('{}', { headers: { 'Content-Type': 'application/json' } }),
+    now: () => 1_000_000,
+    logger: { warn() {}, error() {} },
+  })
+  assert.equal(bot.healthReport({ mode: 'polling', pollingStatus: 'starting' }).ok, false)
+  assert.equal(bot.healthReport({ mode: 'polling', pollingStatus: 'online', lastSuccessfulAt: 999_000 }).ok, true)
+  assert.equal(bot.healthReport({ mode: 'polling', pollingStatus: 'online', lastSuccessfulAt: 1 }).ok, false)
+  assert.equal(bot.healthReport({ mode: 'webhook', pollingStatus: 'online' }).ok, true)
 })

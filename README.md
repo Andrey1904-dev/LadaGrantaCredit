@@ -219,36 +219,68 @@ npm run dev
 
 ## Telegram-бот LADA Assistant
 
-В кабинете появился отдельный раздел **«Бот»** (`#/telegram`) в премиальной графитово-красной дизайн-системе сайта: живой preview чата, динамические сводки из кабинета и безопасная привязка Telegram. Это не только макет — сервер бота находится в `bot/server.mjs` и работает с Telegram Bot API и Supabase.
+В кабинете есть отдельный раздел **«Бот»** (`#/telegram`): preview чата, сводки из кабинета и привязка Telegram по одноразовому коду. Логика бота одна на оба транспорта и лежит в `bot/core.mjs`:
 
-Бот поддерживает команды `/garage`, `/service`, `/spending`, `/credit`, `/link`, `/unlink`, `/help` и inline-меню. Данные из Telegram-доступа показываются только в личном чате после явной привязки аккаунта. Точный остаток кредита пользователь по-прежнему сверяет с банком: бот повторяет расчёт кабинета по числу отмеченных платежей.
+| Транспорт | Файлы | Режим | Когда выбирать |
+| --- | --- | --- | --- |
+| **Supabase Edge Function** | [`supabase/functions/telegram-api/`](supabase/functions/telegram-api/) | webhook | сайт на GitHub Pages — отдельный хостинг не нужен |
+| Node.js-сервис | [`bot/server.mjs`](bot/server.mjs) | long polling | есть VPS/Render/Railway с постоянно живущим процессом |
 
-### Подключение
+Оба отдают один контракт: `GET /health`, `GET /api/telegram/link/status`, `POST /api/telegram/link/confirm`, `DELETE /api/telegram/link`. Перед привязкой API проверяет access token Supabase, код хранится в БД только как SHA-256-хэш, живёт 10 минут и используется один раз. Команды бота: `/garage`, `/service`, `/spending`, `/credit`, `/link`, `/unlink`, `/help` и inline-меню; сводки приходят только в личный чат после привязки.
 
-1. Создайте бота через [@BotFather](https://t.me/BotFather), сохраните его username и токен. Включите меню-команды вручную не обязательно — сервер установит их при запуске. Для аватара используйте `public/images/telegram-assistant-avatar.jpg` через `/setuserpic`; тот же фирменный арт бот отправляет в приветствии `/start`.
-2. Сначала примените `supabase/schema.sql`, затем **отдельно** `supabase/telegram.sql` в Supabase SQL Editor. Вторая схема добавляет таблицы связей и одноразовых кодов; у `anon` и `authenticated` намеренно нет RLS-политик на эти таблицы.
-3. Скопируйте `bot/.env.example` в `bot/.env` и заполните серверные переменные:
-   - `TELEGRAM_BOT_TOKEN` — токен BotFather;
-   - `SUPABASE_URL`, `SUPABASE_ANON_KEY`;
-   - `SUPABASE_SERVICE_ROLE_KEY` — секретный service-role key, **только на сервере**;
-   - `WEB_APP_URL` — публичный адрес кабинета, например `https://andrey1904-dev.github.io/LadaGrantaCredit/`;
-   - `CORS_ALLOWED_ORIGINS` — дополнительные origin сайта, если их несколько.
-4. Разверните постоянный Node.js web service (Node 20.6+, рекомендуется Node 22) из корня репозитория: install/build command — `npm ci`, start command — `npm run bot:start`. Перенесите переменные из `bot/.env` в **секреты/Environment Variables хостинга** (сам файл `.env` в продакшене не нужен). Процесс слушает `0.0.0.0:$PORT` (по умолчанию `3001`); хостинг должен выдавать публичный HTTPS-домен и не усыплять polling-процесс. Запускайте одну polling-инстанцию для токена.
+### Шаг 1. База и бот
 
-   Для локальной разработки скопируйте `bot/.env.example` в `bot/.env` и используйте `npm run bot:local`.
-5. В `.env.local` сайта задайте публичные настройки (не секреты):
+1. Примените `supabase/schema.sql`, затем **отдельно** [`supabase/telegram.sql`](supabase/telegram.sql) в Supabase SQL Editor. Вторая схема добавляет таблицы связей и одноразовых кодов; у `anon` и `authenticated` намеренно нет RLS-политик на эти таблицы.
+2. Создайте бота в [@BotFather](https://t.me/BotFather), сохраните username и токен. Для аватара — `/setuserpic` и `public/images/telegram-assistant-avatar.jpg`.
 
-   ```dotenv
-   VITE_TELEGRAM_BOT_USERNAME=your_bot_username
-   VITE_TELEGRAM_API_URL=/telegram-api
-   ```
+### Шаг 2. Разверните API бота (любой из вариантов)
 
-   В dev-режиме Vite проксирует относительный `/telegram-api` на серверный порт `3001`. Браузер не обращается к `localhost` напрямую. Для GitHub Pages задайте в **Settings → Secrets and variables → Actions → Variables** `VITE_TELEGRAM_BOT_USERNAME` и `VITE_TELEGRAM_API_URL` (последнее — полный HTTPS URL API, например `https://bot-api.example.com`). Не помещайте токен бота или service-role key в `VITE_*`.
-6. На сайте откройте раздел **Бот**, в личном Telegram-чате отправьте `/link` и введите одноразовый код в кабинете. Код хранится в БД только как SHA-256-хэш, действует 10 минут и используется один раз. Отключить доступ можно на сайте или командой `/unlink`.
+**Вариант A — Supabase Edge Function (рекомендуется для GitHub Pages).**
 
-Backend endpoints: `GET /health`, `GET /api/telegram/link/status`, `POST /api/telegram/link/confirm`, `DELETE /api/telegram/link`. Перед привязкой API проверяет актуальный Supabase access token. Секрет Telegram никогда не попадает в сборку сайта. Unit-тесты форматов и расчётов бота входят в `npm test` (или отдельно `npm run bot:test`).
+```bash
+npx supabase login
+TELEGRAM_BOT_TOKEN=123456:AA... SUPABASE_ACCESS_TOKEN=sbp_... \
+  node scripts/telegram-bot-setup.mjs --deploy
+```
 
-> В репозитории нет токена BotFather и публичного API-домена, поэтому настоящий бот станет доступен после шага настройки; пока раздел сайта показывает интерактивный премиальный preview и честный статус конфигурации.
+Скрипт развернёт функцию `telegram-api` (в [`supabase/config.toml`](supabase/config.toml) у неё `verify_jwt = false`: JWT проверяет сама функция), положит секреты `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WEB_APP_URL`, поставит webhook, обновит описание/команды/кнопку меню и проверит `/health`. Без `--deploy` он только перенастраивает уже развёрнутую функцию, `--check` — просто проверяет здоровье.
+
+Вручную: `npx supabase functions deploy telegram-api --project-ref <ref>`, затем `https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<ref>.supabase.co/functions/v1/telegram-api&secret_token=<ваш-секрет>`. Webhook принимается на корне функции и на `/telegram` — обязательно с заголовком `X-Telegram-Bot-Api-Secret-Token`.
+
+**Вариант B — Node.js-сервис (long polling).**
+
+1. Скопируйте `bot/.env.example` в `bot/.env` и заполните: `TELEGRAM_BOT_TOKEN`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (**только на сервере**), `WEB_APP_URL` (адрес кабинета) и `CORS_ALLOWED_ORIGINS` при необходимости.
+2. Разверните постоянный web service (Node 20.6+, рекомендуется Node 22) из корня репозитория: install — `npm ci`, start — `npm run bot:start`. Переменные перенесите в секреты хостинга; процесс слушает `0.0.0.0:$PORT` (по умолчанию `3001`) и требует, чтобы хостинг не усыплял процесс. Держите один polling-инстанс на токен.
+3. Локально: `npm run bot:local` (читает `bot/.env`).
+
+### Шаг 3. Переменные сайта
+
+В **Settings → Secrets and variables → Actions → Variables**:
+
+```dotenv
+VITE_TELEGRAM_BOT_USERNAME=LadaGarage_bot
+VITE_TELEGRAM_API_URL=https://<project-ref>.supabase.co/functions/v1/telegram-api
+```
+
+Локально в `.env.local` можно оставить относительный `/telegram-api`: Vite проксирует его на серверный порт `3001` (браузер не обращается к `localhost` напрямую). Для задеплоенного сайта относительный путь **не работает** — там нужен полный HTTPS-адрес.
+
+> ⚠️ **Токен BotFather не место в `VITE_*`.** Vite подставляет значения этих переменных в открытый JS-бандл, поэтому токен из сборки может забрать любой посетитель. Токен хранится только в секретах сервиса бота (`bot/.env`, секреты Supabase, переменные хостинга). Если токен уже попадал в сборку — отзовите его командой `/revoke` в @BotFather и запустите `scripts/telegram-bot-setup.mjs` заново.
+
+### Шаг 4. Привязка аккаунта
+
+На сайте откройте раздел **Бот**, в Telegram отправьте `/link`, введите одноразовый код в кабинете. Отключить доступ можно на сайте или командой `/unlink`.
+
+### Если раздел «Бот» показывает ошибку
+
+| Симптом | Что произошло | Что делать |
+| --- | --- | --- |
+| `Не удалось связаться с ботом (405)` | `VITE_TELEGRAM_API_URL` не является адресом API (например, относительный путь) — браузер отправлял запрос на домен самого сайта, а GitHub Pages отвечает 405 на POST/DELETE | укажите HTTPS-адрес API бота и пересоберите сайт |
+| `API бота не найден … (404)` | адрес указан верно, но функция/сервис не развёрнуты | разверните `telegram-api` (шаг 2) |
+| «Интеграция ещё не настроена» | переменные не заданы или неверны | заполните переменные из шага 3 — панель подскажет конкретную причину |
+| `Состояние polling: degraded` | Node-сервис не получает обновления | проверьте `TELEGRAM_BOT_TOKEN` и что процесс не усыпляется хостингом |
+| `/health` отвечает 503 в режиме webhook | webhook не установлен или Telegram сообщает об ошибке | `node scripts/telegram-bot-setup.mjs` (без `--deploy`) |
+
+Unit-тесты форматов, расчётов и общей логики бота входят в `npm test` (или `npm run bot:test`); контракт Edge Function и настройки раздела «Бот» проверяют `node scripts/smoke-telegram-api.mjs` и `node scripts/smoke-telegram-config.mjs` (оба входят в `npm run smoke`).
 
 ## Деплой на GitHub Pages
 
@@ -542,7 +574,9 @@ npm test                   # 57 модульных тестов: аннуите�
                            #   план ТО, налог, гарантия, чек-лист, CSV-экспорт, демо-бэкенд
 npm run build              # tsc -b + vite build
 node scripts/smoke-demo.mjs   # 14 проверок демо-режима в сборке с ключами Supabase
-npm run smoke              # то же + SSR-рендер /auth, /, /credit, /expenses, /service, /garage
+node scripts/smoke-telegram-config.mjs  # настройки и тексты ошибок раздела «Бот»
+node scripts/smoke-telegram-api.mjs     # контракт Supabase Edge Function telegram-api
+npm run smoke              # всё перечисленное + SSR-рендер /auth, /, /credit, /expenses, /service, /garage
                            #   в трёх состояниях: с данными, пустой аккаунт, реальные контексты
 SMOKE_DUMP=1 npm run smoke # дополнительно выгрузит текст экранов в node_modules/.tmp/dump/
 npm run check              # типы + тесты + smoke + сборка одной командой

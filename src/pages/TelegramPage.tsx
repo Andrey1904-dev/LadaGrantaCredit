@@ -31,6 +31,8 @@ import {
   requestTelegram,
   TELEGRAM_BOT_URL,
   TELEGRAM_BOT_USERNAME,
+  TELEGRAM_CONFIG_ISSUE,
+  TELEGRAM_CONFIG_MESSAGE,
   type TelegramApiHealth,
   type TelegramLinkStatus,
 } from '../lib/telegram'
@@ -66,7 +68,9 @@ export default function TelegramPage() {
   const refreshHealth = useCallback(async () => {
     if (isDemo || !isTelegramConfigured) {
       setApiHealth(null)
-      setHealthError('')
+      // Если переменные сборки заполнены неверно, показываем конкретную
+      // причину, а не «код 405» из fetch.
+      setHealthError(TELEGRAM_CONFIG_MESSAGE)
       setHealthState('unknown')
       return
     }
@@ -300,20 +304,26 @@ export default function TelegramPage() {
                   ? 'Проверяем Telegram API…'
                   : healthState === 'unknown' && isDemo
                     ? 'Проверка недоступна в демо-режиме'
-                    : healthState === 'unknown'
-                      ? 'Telegram API не настроен'
-                      : 'Telegram API недоступен'}
+                    : healthState === 'unknown' && TELEGRAM_CONFIG_ISSUE
+                      ? 'Настройка бота не завершена'
+                      : healthState === 'unknown'
+                        ? 'Telegram API не настроен'
+                        : 'Telegram API недоступен'}
             </p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-[#A9AFB7]">
               {healthError || (healthState === 'online'
-                ? `Бот ${apiHealth?.botPolling === 'online' ? 'получает обновления' : 'доступен'}${apiHealth?.lastSuccessfulPollAt ? ` · последняя проверка ${fmtDate(apiHealth.lastSuccessfulPollAt)}` : ''}.`
-                : healthState === 'offline' && apiHealth?.botPolling
-                  ? `Состояние polling: ${apiHealth.botPolling}. ${apiHealth.configured === false ? 'Проверьте настройки токена и имени бота на сервере.' : 'Сервер отвечает, но обработка обновлений пока не подтверждена.'}`
-                  : healthState === 'unknown' && isDemo
-                    ? 'Перейдите в облачный аккаунт, чтобы проверить интеграцию.'
-                    : healthState === 'unknown'
-                      ? 'Задайте публичное имя бота и URL API в переменных сборки.'
-                      : 'Проверьте доступность API и повторите проверку.'
+                ? apiHealth?.mode === 'webhook'
+                  ? `Бот получает обновления через вебхук Telegram${apiHealth.webhook?.pendingUpdates ? ` · в очереди ${apiHealth.webhook.pendingUpdates}` : ''}.`
+                  : `Бот ${apiHealth?.botPolling === 'online' ? 'получает обновления' : 'доступен'}${apiHealth?.lastSuccessfulPollAt ? ` · последняя проверка ${fmtDate(apiHealth.lastSuccessfulPollAt)}` : ''}.`
+                : healthState === 'offline' && apiHealth?.mode === 'webhook'
+                  ? apiHealth?.hint ?? 'Вебхук Telegram не отвечает. Проверьте статус функции telegram-api в Supabase.'
+                  : healthState === 'offline' && apiHealth?.botPolling
+                    ? `Состояние polling: ${apiHealth.botPolling}. ${apiHealth.configured === false ? 'Проверьте настройки токена и имени бота на сервере.' : 'Сервер отвечает, но обработка обновлений пока не подтверждена.'}`
+                    : healthState === 'unknown' && isDemo
+                      ? 'Перейдите в облачный аккаунт, чтобы проверить интеграцию.'
+                      : healthState === 'unknown'
+                        ? 'Задайте публичное имя бота и URL API в переменных сборки.'
+                        : 'Проверьте доступность API и повторите проверку.'
               )}
             </p>
           </div>
@@ -385,6 +395,9 @@ export default function TelegramPage() {
               </NoticePanel>
             ) : !isTelegramConfigured ? (
               <NoticePanel tone="neutral" title="Интеграция ещё не настроена">
+                {TELEGRAM_CONFIG_MESSAGE && (
+                  <span className="mb-2 block font-semibold text-[#F3F4F4]">{TELEGRAM_CONFIG_MESSAGE}</span>
+                )}
                 После запуска бота укажите публичное имя через{' '}
                 <code className="rounded bg-[#0E1013] px-1 py-0.5 font-mono text-[11px] text-[#F3F4F4]">
                   VITE_TELEGRAM_BOT_USERNAME
