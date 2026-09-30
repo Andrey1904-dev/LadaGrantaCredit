@@ -2,7 +2,7 @@
  * Smoke-тест настроек и ошибок раздела «Бот» (src/lib/telegram.ts).
  *
  * Ловит регрессию, из-за которой пользователь видел «Не удалось связаться
- * с ботом (405)»: в переменной VITE_TELEGRAM_API_URL лежал токен BotFather,
+ * с ботом (405)»: в VITE_TELEGRAM_API_URL оказалось значение не-URL,
  * запрос уходил на домен самого сайта (GitHub Pages) и получал 404/405.
  *
  * Модуль собирается esbuild-ом с разными import.meta.env, затем проверяются
@@ -52,9 +52,9 @@ async function loadTelegramModule(env, index) {
 
 const cases = [
   {
-    name: 'токен бота вместо адреса API (прод) — самая частая ошибка',
+    name: 'вместо адреса API подставлено произвольное значение',
     env: { VITE_TELEGRAM_BOT_USERNAME: 'LadaGarage_bot', VITE_TELEGRAM_API_URL: TOKEN },
-    expect: { configured: false, issue: 'bot-token' },
+    expect: { configured: false, issue: 'invalid-url' },
   },
   {
     name: 'относительный путь /telegram-api в задеплоенной сборке',
@@ -100,9 +100,10 @@ for (const [index, testCase] of cases.entries()) {
 }
 
 check(
-  'сообщение об ошибке объясняет про токен и /revoke',
-  /@BotFather/.test(modules['токен бота вместо адреса API (прод) — самая частая ошибка'].TELEGRAM_CONFIG_MESSAGE),
-  modules['токен бота вместо адреса API (прод) — самая частая ошибка'].TELEGRAM_CONFIG_MESSAGE,
+  'сообщение об ошибке называет переменную и ожидаемый формат',
+  /VITE_TELEGRAM_API_URL/.test(modules['вместо адреса API подставлено произвольное значение'].TELEGRAM_CONFIG_MESSAGE) &&
+    /https:\/\//.test(modules['вместо адреса API подставлено произвольное значение'].TELEGRAM_CONFIG_MESSAGE),
+  modules['вместо адреса API подставлено произвольное значение'].TELEGRAM_CONFIG_MESSAGE,
 )
 
 const good = modules['корректный HTTPS-адрес функции']

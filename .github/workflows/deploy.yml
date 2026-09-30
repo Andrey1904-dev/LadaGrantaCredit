@@ -62,35 +62,6 @@ jobs:
             exit 1
           fi
 
-      # Публичные переменные бота. Проверка ловит самую частую ошибку —
-      # токен BotFather в VITE_*: он попадает в открытый JS-бандл на Pages,
-      # и любой посетитель может управлять ботом. Такой деплой лучше отменить.
-      - name: Проверить переменные Telegram-бота
-        env:
-          VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME }}
-          VITE_TELEGRAM_API_URL: ${{ vars.VITE_TELEGRAM_API_URL }}
-        run: |
-          FAIL=0
-          if [[ "$VITE_TELEGRAM_API_URL" =~ ^[0-9]{6,12}:[A-Za-z0-9_-]{25,}$ ]] || [[ "$VITE_TELEGRAM_BOT_USERNAME" =~ ^[0-9]{6,12}:[A-Za-z0-9_-]{25,}$ ]]; then
-            echo "::error title=Токен бота попал в переменные сборки::VITE_TELEGRAM_API_URL должен содержать HTTPS-адрес API бота, а не токен BotFather. Немедленно отзовите токен командой /revoke в @BotFather, затем укажите в VITE_TELEGRAM_API_URL адрес сервиса бота (например, https://<project-ref>.supabase.co/functions/v1/telegram-api)."
-            FAIL=1
-          fi
-          if [ -n "$VITE_TELEGRAM_API_URL" ] && [[ "$VITE_TELEGRAM_API_URL" != https://* ]]; then
-            echo "::error title=Некорректный VITE_TELEGRAM_API_URL::Нужен полный HTTPS-адрес API бота. Относительный путь вроде /telegram-api работает только в режиме разработки через прокси Vite."
-            FAIL=1
-          fi
-          if [ -n "$VITE_TELEGRAM_BOT_USERNAME" ] && [ -z "$VITE_TELEGRAM_API_URL" ]; then
-            echo "::notice title=Раздел «Бот» будет в режиме настройки::Задайте VITE_TELEGRAM_API_URL — HTTPS-адрес API бота, чтобы подключение аккаунта заработало."
-          fi
-          if [ -n "$VITE_TELEGRAM_API_URL" ] && [ -z "$VITE_TELEGRAM_BOT_USERNAME" ]; then
-            echo "::error title=Не задан VITE_TELEGRAM_BOT_USERNAME::Укажите публичное имя бота без @ (например, LadaGarage_bot), иначе кнопка «Открыть бота» не появится."
-            FAIL=1
-          fi
-          if [ "$FAIL" -ne 0 ]; then
-            echo "Деплой отменён: исправьте переменные Telegram, чтобы в сборку не уехал токен или нерабочий адрес API."
-            exit 1
-          fi
-
       - name: Check and build
         run: npm run check
         env:

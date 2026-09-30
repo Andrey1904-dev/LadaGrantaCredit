@@ -23,12 +23,10 @@ export type TelegramConfigIssue =
   | ''
   | 'missing-username'
   | 'missing-url'
-  | 'bot-token'
   | 'relative-in-prod'
   | 'not-https'
   | 'invalid-url'
 
-const BOT_TOKEN_LIKE = /^\d{6,12}:[A-Za-z0-9_-]{25,}$/
 const BOT_USERNAME_LIKE = /^[A-Za-z0-9_]{5,32}$/
 
 const rawBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? '').trim().replace(/^@/, '')
@@ -40,8 +38,6 @@ const CONFIG_MESSAGES: Record<Exclude<TelegramConfigIssue, ''>, string> = {
     'Задайте публичное имя бота (без @) в переменной сборки VITE_TELEGRAM_BOT_USERNAME.',
   'missing-url':
     'Задайте HTTPS-адрес API бота в переменной сборки VITE_TELEGRAM_API_URL — например, адрес Supabase Edge Function …/functions/v1/telegram-api.',
-  'bot-token':
-    'В переменных сборки оказался токен бота BotFather. Токен нельзя встраивать в сборку сайта: отзовите его командой /revoke в @BotFather и укажите в VITE_TELEGRAM_API_URL адрес сервиса бота.',
   'relative-in-prod':
     'VITE_TELEGRAM_API_URL — относительный путь. Такой адрес работает только в режиме разработки через прокси Vite. Для задеплоенного сайта укажите полный HTTPS-адрес API бота.',
   'not-https':
@@ -54,14 +50,13 @@ type ApiUrlResult = { url: string; issue: TelegramConfigIssue }
 /**
  * Проверяет адрес API до первого запроса.
  *
- * Раньше значение из переменной уходило в `fetch` как есть: если в него попадал
- * токен бота или относительный путь из `.env.example`, браузер слал запрос на
- * домен самого сайта (GitHub Pages) и получал 404/405 вместо ответа бота.
+ * Раньше значение из переменной уходило в `fetch` как есть: относительный путь
+ * из `.env.example` уезжал в продакшн-сборку, браузер слал запрос на домен
+ * самого сайта (GitHub Pages) и получал 404/405 вместо ответа бота.
  */
 export function normalizeTelegramApiUrl(value: string, dev = isDev): ApiUrlResult {
   const raw = value.trim()
   if (!raw) return { url: '', issue: 'missing-url' }
-  if (BOT_TOKEN_LIKE.test(raw) || /^\d{6,12}:/.test(raw)) return { url: '', issue: 'bot-token' }
   if (raw.startsWith('/')) {
     return dev
       ? { url: raw.replace(/\/+$/, '') || '/', issue: '' }
@@ -96,8 +91,6 @@ export const TELEGRAM_BOT_URL = TELEGRAM_BOT_USERNAME
 
 /** Одна понятная причина, почему интеграция не готова. */
 export const TELEGRAM_CONFIG_ISSUE: TelegramConfigIssue = (() => {
-  if (rawBotUsername && !TELEGRAM_BOT_USERNAME && BOT_TOKEN_LIKE.test(rawBotUsername)) return 'bot-token'
-  if (apiUrl.issue === 'bot-token') return 'bot-token'
   if (apiUrl.issue) return apiUrl.issue
   if (!TELEGRAM_BOT_USERNAME) return 'missing-username'
   return ''

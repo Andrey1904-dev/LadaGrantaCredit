@@ -68,8 +68,8 @@ export default function TelegramPage() {
   const refreshHealth = useCallback(async () => {
     if (isDemo || !isTelegramConfigured) {
       setApiHealth(null)
-      // Если переменные сборки заполнены неверно (например, в адрес API попал
-      // токен бота), показываем конкретную причину, а не «код 405» из fetch.
+      // Если переменные сборки заполнены неверно, показываем конкретную
+      // причину, а не «код 405» из fetch.
       setHealthError(TELEGRAM_CONFIG_MESSAGE)
       setHealthState('unknown')
       return
@@ -394,7 +394,7 @@ export default function TelegramPage() {
                 облачный аккаунт сайта — демо-данные бот не получает.
               </NoticePanel>
             ) : !isTelegramConfigured ? (
-              <NoticePanel tone={TELEGRAM_CONFIG_ISSUE === 'bot-token' ? 'warning' : 'neutral'} title="Интеграция ещё не настроена">
+              <NoticePanel tone="neutral" title="Интеграция ещё не настроена">
                 {TELEGRAM_CONFIG_MESSAGE && (
                   <span className="mb-2 block font-semibold text-[#F3F4F4]">{TELEGRAM_CONFIG_MESSAGE}</span>
                 )}
