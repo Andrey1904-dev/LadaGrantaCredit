@@ -96,9 +96,19 @@ export function createApp(config = {}) {
 
   /** Путь внутри функции: убираем префикс /functions/v1/<slug>. */
   function routePath(pathname) {
-    const marker = `/functions/v1/${FUNCTION_SLUG}`
-    const at = pathname.indexOf(marker)
-    return at >= 0 ? pathname.slice(at + marker.length) || '/' : pathname
+    const markers = [
+      `/functions/v1/${FUNCTION_SLUG}`,
+      `/${FUNCTION_SLUG}`,
+    ]
+
+    for (const marker of markers) {
+      if (pathname === marker) return '/'
+      if (pathname.startsWith(`${marker}/`)) {
+        return pathname.slice(marker.length) || '/'
+      }
+    }
+
+    return pathname || '/'
   }
 
   function consumeRateLimit(key, limit) {
