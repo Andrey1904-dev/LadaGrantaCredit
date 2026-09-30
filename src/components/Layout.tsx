@@ -4,6 +4,7 @@ import { useAppData } from '../context/AppDataContext'
 import { resetDemoData } from '../lib/local'
 import BottomNav, { NAV_TABS } from './BottomNav'
 import { AlertIcon, LogoutIcon, RefreshIcon } from './icons'
+import { confirmAction } from '../lib/telegram-mini-app'
 
 /**
  * Основной каркас личного кабинета владельца LADA Granta Sport.
@@ -17,13 +18,13 @@ export default function Layout() {
   const isDemo = mode === 'demo'
 
   const handleLogout = async () => {
-    if (!window.confirm(isDemo ? 'Выйти из демо-режима?' : 'Выйти из аккаунта?')) return
+    if (!(await confirmAction(isDemo ? 'Выйти из демо-режима?' : 'Выйти из аккаунта?'))) return
     await signOut()
     navigate('/auth', { replace: true })
   }
 
   const handleResetDemo = async () => {
-    if (!window.confirm('Пересоздать демо-данные? Ваши изменения в демо-кабинете будут потеряны.')) return
+    if (!(await confirmAction('Пересоздать демо-данные? Ваши изменения в демо-кабинете будут потеряны.'))) return
     resetDemoData()
     await refresh()
   }
@@ -73,15 +74,19 @@ export default function Layout() {
             </div>
           </div>
 
-          {/* Навигация в шапке на широких экранах (дополняет нижнюю панель) */}
-          <div className="hidden items-center gap-1 md:flex" role="navigation" aria-label="Быстрые разделы">
+          {/* Навигация в шапке на широких экранах (дополняет нижнюю панель).
+              На md–lg — только иконки: шесть подписей не помещаются рядом с логотипом,
+              и кнопка выхода уезжала за край экрана. */}
+          <div className="hidden min-w-0 items-center gap-1 md:flex" role="navigation" aria-label="Быстрые разделы">
             {NAV_TABS.map(({ to, label, Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
                 end={end}
+                title={label}
+                aria-label={label}
                 className={({ isActive }) =>
-                  `inline-flex min-h-[40px] items-center gap-2 rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+                  `inline-flex min-h-[40px] min-w-[40px] items-center justify-center gap-1.5 rounded-[8px] px-2 py-1.5 text-[13px] font-semibold transition-colors xl:px-2.5 ${
                     isActive
                       ? 'border border-[#E33337]/50 bg-[#23272D] text-[#F3F4F4]'
                       : 'text-[#A9AFB7] hover:bg-[#1A1D22] hover:text-[#F3F4F4]'
@@ -90,8 +95,8 @@ export default function Layout() {
               >
                 {({ isActive }) => (
                   <>
-                    <Icon className={`h-4 w-4 ${isActive ? 'text-[#E33337]' : 'text-[#A9AFB7]'}`} />
-                    <span>{label}</span>
+                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#E33337]' : 'text-[#A9AFB7]'}`} />
+                    <span className="hidden xl:inline">{label}</span>
                   </>
                 )}
               </NavLink>

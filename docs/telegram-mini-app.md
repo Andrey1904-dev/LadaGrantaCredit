@@ -15,11 +15,17 @@
 | 4.4 Viewport и safe area | CSS-переменные `--tg-app-*` обновляются на `viewportChanged`, `safeAreaChanged`, `contentSafeAreaChanged`, `resize`, `orientationchange`. Правила в конце [`src/index.css`](../src/index.css) действуют только при `html.tg-mini-app` |
 | 4.5 Тема | Шапка/фон Mini App `#0E1013`, нижняя панель Telegram `#1A1D22` (как фон и панель сайта); повторное применение на `themeChanged` |
 | 4.6 Haptic Feedback | Не подключался: в ТЗ он необязательный и требует отдельного согласования |
+| Диалоги | Все подтверждения сайта (выход, удаление записей, отключение бота, сброс демо) внутри Mini App показываются нативным попапом Telegram (`showConfirm`, 6.2+): `window.confirm` во встроенных WebView работает не везде |
+| Ссылки | Ссылки `t.me` открываются внутри Telegram (`openTelegramLink`), внешние — во внешнем браузере (`openLink`), а не внутри WebView |
+| Экспорт файлов | В мобильных клиентах Blob-скачивание не работает → меню «Поделиться» (Web Share API) или предложение открыть кабинет в браузере |
+| Свайпы | Пока открыто модальное окно, свайп вниз не сворачивает Mini App (`disableVerticalSwipes`, 7.7+) |
+| Отказоустойчивость | `AppErrorBoundary`: ошибка рендера показывает экран «Что-то пошло не так» с кнопками «Обновить» / «На главную» вместо белого экрана; `ready()` вызывается и в этом случае |
 | 4.7 `startapp` | Белый список `START_ROUTES`: `home`, `dashboard`, `credit`, `expenses`, `spending`, `service`, `garage`, `bot`, `telegram` |
 | 5.1 Кнопка меню | `setChatMenuButton` с `type: web_app` ставится скриптом [`scripts/telegram-bot-setup.mjs`](../scripts/telegram-bot-setup.mjs) и при старте Node-бота (`applyBotProfile`), после установки проверяется через `getChatMenuButton` |
 | 5.2 Inline-кнопка | [`bot/core.mjs`](../bot/core.mjs): «📱 Открыть кабинет» — это `web_app`, а не `url`; в сообщении с кодом привязки есть кнопка «📱 Ввести код в кабинете» (`?screen=telegram`) |
 | 5.4 Скрипт и переменные | URL берётся только из `WEB_APP_URL` / `--webapp-url` (адрес по умолчанию, прописанный в коде, убран). Токен и секрет вебхука маскируются в логах |
-| 8.1 Автотесты | см. раздел 6 |
+| 8.1 Автотесты | см. раздел 6, включая e2e в настоящем Chrome |
+| Эксплуатация | Workflow **Telegram bot — Mini App setup** (ручной запуск в Actions) ставит кнопку меню/вебхук с токеном из секретов CI |
 
 ### Как это работает при запуске
 
@@ -126,6 +132,18 @@ Node-сервис). При пустом/HTTP-адресе кнопка каби�
 
 Эта регистрация скриптом не автоматизируется (ТЗ 5.3).
 
+### 3.3a Из GitHub Actions (без локального токена)
+
+1. Settings → Secrets and variables → Actions → **Secrets**: `TELEGRAM_BOT_TOKEN`
+   (и `SUPABASE_ACCESS_TOKEN`, если нужен деплой функции).
+2. Вкладка **Variables**: `WEB_APP_URL` (если не задан — адрес GitHub Pages этого репозитория).
+3. Actions → **Telegram bot — Mini App setup** → Run workflow: `menu` — только кнопка меню,
+   `full` — вебхук, описание, команды и кнопка меню (+ `deploy` для Edge Function).
+   Job использует environment `telegram-bot` — на нём можно включить обязательное подтверждение.
+
+Перед обращением к Telegram workflow прогоняет тесты бота и smoke скрипта настройки;
+токен маскируется в логах.
+
 ### 3.4 Тестовый бот
 
 Для приёмки создайте отдельного бота в @BotFather и запустите скрипт с его токеном и тем же
@@ -159,6 +177,21 @@ production `WEB_APP_URL` (или адресом тестовой копии са
 
 ---
 
+## 4a. Чек-лист релиза
+
+1. `npm run check` и `npm run build && npm run e2e` — зелёные (в CI это шаги деплоя; скриншоты
+   e2e сохраняются артефактом `e2e-screenshots`).
+2. Слить PR в `main` → GitHub Actions задеплоит Pages.
+3. Проверить заголовки (раздел 2) и открыть сайт в браузере.
+4. Если менялся `WEB_APP_URL` или код бота — передеплоить Edge Function / перезапустить Node-сервис
+   и запустить workflow **Telegram bot — Mini App setup** (`menu`).
+5. Через ~10 минут (кэш Pages) пройти пункты 2, 3, 7, 12 матрицы на одном мобильном клиенте.
+6. Откат: `git revert` коммита в `main` → автодеплой прежней версии. Кнопку меню вернуть к
+   списку команд — вызовом Bot API `setChatMenuButton` с `{"menu_button":{"type":"commands"}}`
+   (если работает Node-сервис, уберите у него `WEB_APP_URL`, иначе при рестарте он снова поставит Mini App).
+
+---
+
 ## 5. Известные ограничения
 
 - Сессия Supabase хранится в `localStorage` WebView; она изолирована от мобильного браузера и
@@ -174,6 +207,9 @@ production `WEB_APP_URL` (или адресом тестовой копии са
 - Подтверждение «закрыть без сохранения» подключено к окну «Новый/редактировать расход»;
   остальные окна закрываются по «Назад» без вопроса (как и крестиком на сайте). Чтобы добавить
   подтверждение, передайте в `<Sheet>` проп `dirty`.
+- E2E использует копию официального `telegram-web-app.js` из пакета `@twa-dev/sdk` (Bot API 8.0),
+  чтобы не зависеть от сети; `E2E_REAL_SDK=1` берёт актуальный файл с telegram.org. Эмуляция
+  протокола событий не заменяет проверку на реальных клиентах (раздел 4).
 
 ---
 
@@ -184,4 +220,5 @@ production `WEB_APP_URL` (или адресом тестовой копии са
 | `npm test` → `tests/mini-app.test.ts` | деградация без SDK / при ошибке сети / на старых клиентах; определение среды; белый список `startapp`/`screen` (в т.ч. `__proto__`, пути, URL); очистка hash; BackButton (корень, история, родитель, окна); viewport/safe area; цвета по версиям; подтверждение закрытия |
 | `npm test` → `tests/telegram.test.mjs` | `web_app` vs `url` в клавиатурах, URL из конфигурации, отсутствие/некорректность URL, `applyBotProfile` → `setChatMenuButton` `web_app` + команды, согласованность ключей бота и сайта, идентичность копий ядра для Edge Function |
 | `npm run smoke` → `scripts/smoke-telegram-setup.mjs` | скрипт настройки с подменённым fetch (без реального токена): payload `setChatMenuButton`, проверка `getChatMenuButton`, `--menu-only`, отказ без HTTPS `WEB_APP_URL`, токен/секрет не попадают в вывод |
+| `npm run e2e` (после сборки; в CI — отдельный шаг) | **настоящий Chrome** + официальный код SDK, 84 проверки: обычный браузер без SDK; отказ SDK (отрисовка ≤ 5 с); `expand`/`ready`, цвета; BackButton по истории и на корне; частично свёрнутый viewport и safe area; окно с формой (попап, closing confirmation, свайпы); ссылки t.me/внешние; экспорт; выход через попап; перезагрузка; 6 вариантов deep link; Bot API 6.0; 320 px; шапка 768–1440 px; альбомная ориентация |
 | `npm run check:dist` (входит в `npm run check`) | нет секретов и вызовов Bot API в `dist/`, нет `localhost`/HTTP-ресурсов, нет Service Worker, ассеты с хешем, SDK не блокирует `index.html` |

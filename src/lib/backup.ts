@@ -2,6 +2,7 @@ import type { Car, Loan, MaintenanceRecord, Transaction } from '../types/domain'
 import { CATEGORY_META } from './categories'
 import type { AppSettings } from './settings'
 import { fmtDate } from '../utils/format'
+import { deliverFileInMiniApp, needsFileFallback } from './telegram-mini-app'
 
 /**
  * Выгрузка данных гаража.
@@ -67,8 +68,17 @@ export function buildMaintenanceCsv(records: MaintenanceRecord[]): string {
   return '\uFEFF' + rows.map((r) => r.map(csvCell).join(';')).join('\r\n')
 }
 
-/** Сохраняет строку как файл (Blob + временная ссылка) */
+/**
+ * Сохраняет строку как файл (Blob + временная ссылка). В мобильном Telegram
+ * Mini App скачивание Blob не поддерживается — там файл передаётся через меню
+ * «Поделиться» или предлагается открыть кабинет в браузере.
+ */
 export function downloadTextFile(filename: string, content: string, mime: string): void {
+  if (needsFileFallback()) {
+    const file = new File([content], filename, { type: `${mime};charset=utf-8` })
+    void deliverFileInMiniApp(file, `${window.location.origin}${window.location.pathname}#/garage`)
+    return
+  }
   const blob = new Blob([content], { type: `${mime};charset=utf-8` })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

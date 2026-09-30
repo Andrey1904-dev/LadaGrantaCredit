@@ -1,7 +1,7 @@
 import { useCallback, useEffect, type ReactNode } from 'react'
 import { CloseIcon } from './icons'
-import { useTelegramBackHandler, useTelegramClosingConfirmation } from '../lib/telegram-mini-app-hooks'
-import { confirmDiscard } from '../lib/telegram-mini-app'
+import { useTelegramBackHandler, useTelegramClosingConfirmation, useTelegramSwipeLock } from '../lib/telegram-mini-app-hooks'
+import { confirmAction } from '../lib/telegram-mini-app'
 
 interface SheetProps {
   open: boolean
@@ -23,12 +23,13 @@ export default function Sheet({ open, onClose, title, children, dirty = false }:
       onClose()
       return
     }
-    void confirmDiscard('Закрыть без сохранения? Введённые данные будут потеряны.').then((ok) => {
+    void confirmAction('Закрыть без сохранения? Введённые данные будут потеряны.').then((ok) => {
       if (ok) onClose()
     })
   }, [dirty, onClose])
   useTelegramBackHandler(open, handleTelegramBack)
   useTelegramClosingConfirmation(open && dirty)
+  useTelegramSwipeLock(open)
 
   useEffect(() => {
     if (!open) return

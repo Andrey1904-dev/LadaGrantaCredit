@@ -12,6 +12,11 @@ import {
   applyViewport,
   backButtonPlan,
   bootstrapTelegramMiniApp,
+  classifyLink,
+  confirmAction,
+  lockVerticalSwipes,
+  needsFileFallback,
+  openLinkInTelegram,
   getMiniApp,
   hasLaunchParams,
   initMiniApp,
@@ -98,6 +103,14 @@ function fakeWebApp(overrides: Partial<TelegramWebApp> = {}, version = '8.0') {
     setBackgroundColor: (c: string) => void calls.push(`bg:${c}`),
     setBottomBarColor: (c: string) => void calls.push(`bottom:${c}`),
     enableClosingConfirmation: () => void calls.push('confirm:on'),
+    disableVerticalSwipes: () => void calls.push('swipes:off'),
+    enableVerticalSwipes: () => void calls.push('swipes:on'),
+    showConfirm: (message: string, cb?: (ok: boolean) => void) => {
+      calls.push(`popup:${message}`)
+      cb?.(true)
+    },
+    openLink: (url: string) => void calls.push(`link:${url}`),
+    openTelegramLink: (url: string) => void calls.push(`tglink:${url}`),
     disableClosingConfirmation: () => void calls.push('confirm:off'),
     onEvent: (name: string, handler: () => void) => {
       events.set(name, [...(events.get(name) ?? []), handler])
@@ -404,5 +417,86 @@ describe('подтверждение закрытия', () => {
   it('вне Telegram — no-op', () => {
     const release = requestClosingConfirmation()
     release()
+  })
+})
+
+describe('диалоги, ссылки, свайпы и файлы внутри Mini App', () => {
+  function started(overrides: Partial<TelegramWebApp> = {}, version = '8.0') {
+    const root = fakeRoot()
+    const { win } = fakeWindow('https://site.test/')
+    g.window = win
+    const fake = fakeWebApp(overrides, version)
+    initMiniApp(fake.webApp, { root: root as unknown as HTMLElement, win })
+    return fake
+  }
+
+  it('confirmAction использует нативный попап Telegram и обрезает длинный текст', async () => {
+    const { calls } = started()
+    assert.equal(await confirmAction('Выйти из аккаунта?'), true)
+    assert.ok(calls.includes('popup:Выйти из аккаунта?'))
+    await confirmAction('x'.repeat(400))
+    const long = calls.find((c) => c.startsWith('popup:x'))!
+    assert.equal(long.length - 'popup:'.length, 256)
+  })
+
+  it('confirmAction вне Telegram — window.confirm', async () => {
+    g.window = { confirm: (m: string) => m === 'да?' }
+    assert.equal(await confirmAction('да?'), true)
+    assert.equal(await confirmAction('нет?'), false)
+  })
+
+  it('confirmAction на клиенте < 6.2 не вызывает попап', async () => {
+    const { calls } = started({}, '6.1')
+    ;(g.window as Record<string, unknown>).confirm = () => true
+    assert.equal(await confirmAction('ok?'), true)
+    assert.ok(!calls.some((c) => c.startsWith('popup:')))
+  })
+
+  it('classifyLink различает t.me, внешние, свои и прочие ссылки', () => {
+    const origin = 'https://andrey1904-dev.github.io'
+    assert.equal(classifyLink('https://t.me/LadaGarage_bot?start=site', origin), 'telegram')
+    assert.equal(classifyLink('https://mail.yandex.ru/', origin), 'external')
+    assert.equal(classifyLink('/LadaGrantaCredit/#/garage', origin), 'internal')
+    assert.equal(classifyLink('mailto:owner@example.com', origin), 'other')
+    assert.equal(classifyLink('javascript:alert(1)', origin), 'other')
+  })
+
+  it('openLinkInTelegram: t.me — openTelegramLink, внешние — openLink, свои — штатно', () => {
+    const { calls } = started()
+    const origin = 'https://site.test'
+    assert.equal(openLinkInTelegram('https://t.me/LadaGarage_bot', origin), true)
+    assert.equal(openLinkInTelegram('https://gosuslugi.ru/', origin), true)
+    assert.equal(openLinkInTelegram('https://site.test/#/credit', origin), false)
+    assert.ok(calls.includes('tglink:https://t.me/LadaGarage_bot'))
+    assert.ok(calls.includes('link:https://gosuslugi.ru/'))
+  })
+
+  it('openLinkInTelegram вне Telegram ничего не перехватывает', () => {
+    assert.equal(openLinkInTelegram('https://t.me/x', 'https://site.test'), false)
+  })
+
+  it('lockVerticalSwipes: счётчик блокировок, только с 7.7', () => {
+    const { calls } = started()
+    const a = lockVerticalSwipes()
+    const b = lockVerticalSwipes()
+    assert.equal(calls.filter((c) => c === 'swipes:off').length, 1)
+    a()
+    assert.ok(!calls.includes('swipes:on'))
+    b()
+    assert.equal(calls.filter((c) => c === 'swipes:on').length, 1)
+
+    __resetMiniAppForTests()
+    const old = started({}, '7.6')
+    lockVerticalSwipes()()
+    assert.ok(!old.calls.some((c) => c.startsWith('swipes:')))
+  })
+
+  it('альтернатива скачиванию нужна только в мобильных клиентах', () => {
+    assert.equal(needsFileFallback(), false)
+    started({ platform: 'ios' })
+    assert.equal(needsFileFallback(), true)
+    __resetMiniAppForTests()
+    started({ platform: 'tdesktop' })
+    assert.equal(needsFileFallback(), false)
   })
 })

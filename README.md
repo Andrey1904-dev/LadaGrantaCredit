@@ -588,13 +588,15 @@ node scripts/smoke-telegram-config.mjs  # настройки и тексты о�
 node scripts/smoke-telegram-api.mjs     # контракт Supabase Edge Function telegram-api
 node scripts/smoke-telegram-setup.mjs   # скрипт настройки бота: кнопка меню Mini App без реального токена
 npm run check:dist         # после сборки: нет секретов/localhost/Service Worker в dist/
+npm run e2e                # после сборки: e2e Telegram Mini App в Chrome (CHROME_PATH=… при необходимости)
 npm run smoke              # всё перечисленное + SSR-рендер /auth, /, /credit, /expenses, /service, /garage
                            #   в трёх состояниях: с данными, пустой аккаунт, реальные контексты
 SMOKE_DUMP=1 npm run smoke # дополнительно выгрузит текст экранов в node_modules/.tmp/dump/
 npm run check              # типы + тесты + smoke + сборка + check:dist одной командой
 ```
 
-Браузера в CI нет, поэтому экраны проверяются серверным рендером (`react-dom/server`):
+Сценарии Telegram Mini App дополнительно проверяются в настоящем Chrome (`npm run e2e`, шаг CI
+«E2E Telegram Mini App»). Экраны кабинета проверяются серверным рендером (`react-dom/server`):
 скрипт собирает приложение esbuild'ом, подставляет данные и падает, если любой
 экран бросил исключение или отрендерил пустоту. Тесты лежат в
 [`tests/unit.test.ts`](tests/unit.test.ts) и запускаются штатным `node --test`

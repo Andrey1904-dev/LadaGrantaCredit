@@ -46,6 +46,11 @@ export interface TelegramWebApp {
   enableClosingConfirmation?(): void
   disableClosingConfirmation?(): void
   showConfirm?(message: string, callback?: (ok: boolean) => void): void
+  showAlert?(message: string, callback?: () => void): void
+  openLink?(url: string, options?: { try_instant_view?: boolean }): void
+  openTelegramLink?(url: string): void
+  disableVerticalSwipes?(): void
+  enableVerticalSwipes?(): void
   onEvent?(event: string, handler: Listener): void
   offEvent?(event: string, handler: Listener): void
   BackButton?: {
@@ -286,16 +291,167 @@ export function requestClosingConfirmation(): () => void {
   }
 }
 
-/** Подтверждение «закрыть без сохранения?» нативным попапом Telegram или window.confirm. */
-export function confirmDiscard(message: string): Promise<boolean> {
+/** Лимит текста нативного попапа Telegram. */
+const POPUP_MESSAGE_LIMIT = 256
+
+function clampPopupMessage(message: string): string {
+  return message.length > POPUP_MESSAGE_LIMIT ? `${message.slice(0, POPUP_MESSAGE_LIMIT - 1)}…` : message
+}
+
+/**
+ * Подтверждение действия. Внутри Mini App — нативный попап Telegram (`showConfirm`,
+ * Bot API 6.2+): `window.confirm` во встроенных WebView работает не везде и может
+ * молча возвращать false. В браузере — обычный `window.confirm`.
+ */
+export function confirmAction(message: string): Promise<boolean> {
   const webApp = activeWebApp
   if (webApp && supports(webApp, '6.2') && typeof webApp.showConfirm === 'function') {
     return new Promise((resolve) => {
-      const ok = safeCall('showConfirm', () => webApp.showConfirm!(message, (confirmed) => resolve(Boolean(confirmed))))
-      if (!ok) resolve(window.confirm(message))
+      const ok = safeCall('showConfirm', () =>
+        webApp.showConfirm!(clampPopupMessage(message), (confirmed) => resolve(Boolean(confirmed))),
+      )
+      if (!ok) resolve(typeof window !== 'undefined' ? window.confirm(message) : false)
     })
   }
-  return Promise.resolve(typeof window !== 'undefined' ? window.confirm(message) : true)
+  return Promise.resolve(typeof window !== 'undefined' ? window.confirm(message) : false)
+}
+
+/** @deprecated используйте confirmAction */
+export const confirmDiscard = confirmAction
+
+/** Короткое уведомление: попап Telegram в Mini App, `window.alert` в браузере. */
+export function notify(message: string): Promise<void> {
+  const webApp = activeWebApp
+  if (webApp && supports(webApp, '6.2') && typeof webApp.showAlert === 'function') {
+    return new Promise((resolve) => {
+      const ok = safeCall('showAlert', () => webApp.showAlert!(clampPopupMessage(message), () => resolve()))
+      if (!ok) {
+        window.alert(message)
+        resolve()
+      }
+    })
+  }
+  if (typeof window !== 'undefined') window.alert(message)
+  return Promise.resolve()
+}
+
+/* ---------------------------------------------------------- внешние ссылки --- */
+
+const TELEGRAM_LINK_RE = /^https:\/\/t\.me\//i
+
+/**
+ * Как открыть ссылку внутри Mini App: t.me — внутри Telegram, внешние http(s) —
+ * во внешнем браузере, свои адреса и прочие схемы — штатно.
+ */
+export function classifyLink(href: string, currentOrigin: string): 'telegram' | 'external' | 'internal' | 'other' {
+  let url: URL
+  try {
+    url = new URL(href, currentOrigin)
+  } catch {
+    return 'other'
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return 'other'
+  if (url.origin === currentOrigin) return 'internal'
+  if (TELEGRAM_LINK_RE.test(url.href)) return 'telegram'
+  return 'external'
+}
+
+/** Открывает ссылку средствами Telegram; true — ссылка обработана. */
+export function openLinkInTelegram(href: string, currentOrigin: string = window.location.origin): boolean {
+  const webApp = activeWebApp
+  if (!webApp || !supports(webApp, '6.1')) return false
+  const kind = classifyLink(href, currentOrigin)
+  if (kind === 'telegram' && typeof webApp.openTelegramLink === 'function') {
+    return safeCall('openTelegramLink', () => webApp.openTelegramLink!(new URL(href).href))
+  }
+  if (kind === 'external' && typeof webApp.openLink === 'function') {
+    return safeCall('openLink', () => webApp.openLink!(new URL(href, currentOrigin).href))
+  }
+  return false
+}
+
+/** Открывает адрес во внешнем браузере (даже если это адрес самого сайта). */
+export function openInExternalBrowser(url: string): boolean {
+  const webApp = activeWebApp
+  if (!webApp || !supports(webApp, '6.1') || typeof webApp.openLink !== 'function') return false
+  return safeCall('openLink', () => webApp.openLink!(url))
+}
+
+/** Перехват кликов по <a>: внешние и t.me-ссылки уходят в Telegram (а не в WebView). */
+function installLinkInterceptor(doc: Document, win: Window): void {
+  doc.addEventListener(
+    'click',
+    (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const target = event.target as Element | null
+      const anchor = target && typeof target.closest === 'function' ? (target.closest('a[href]') as HTMLAnchorElement | null) : null
+      if (!anchor || anchor.hasAttribute('download')) return
+      const href = anchor.getAttribute('href') ?? ''
+      if (!href || href.startsWith('#')) return
+      if (openLinkInTelegram(anchor.href || href, win.location.origin)) event.preventDefault()
+    },
+    true,
+  )
+}
+
+/* ----------------------------------------------- вертикальные свайпы --- */
+
+let swipeLocks = 0
+
+/**
+ * Пока открыто модальное окно, свайп вниз внутри него не должен сворачивать
+ * Mini App (Bot API 7.7+). Возвращает функцию снятия блокировки.
+ */
+export function lockVerticalSwipes(): () => void {
+  const webApp = activeWebApp
+  if (!webApp || !supports(webApp, '7.7') || typeof webApp.disableVerticalSwipes !== 'function') return () => {}
+  swipeLocks++
+  if (swipeLocks === 1) safeCall('disableVerticalSwipes', () => webApp.disableVerticalSwipes!())
+  let released = false
+  return () => {
+    if (released) return
+    released = true
+    swipeLocks = Math.max(0, swipeLocks - 1)
+    if (swipeLocks === 0) safeCall('enableVerticalSwipes', () => webApp.enableVerticalSwipes?.())
+  }
+}
+
+/* ------------------------------------------------------------- файлы --- */
+
+/** Платформы, где WebView Telegram не умеет скачивать Blob-файлы. */
+const NO_BLOB_DOWNLOAD_PLATFORMS = new Set(['android', 'android_x', 'ios'])
+
+/** Нужна ли альтернатива обычному скачиванию файла. */
+export function needsFileFallback(): boolean {
+  return Boolean(activeWebApp && NO_BLOB_DOWNLOAD_PLATFORMS.has(String(activeWebApp.platform)))
+}
+
+/**
+ * Передаёт файл пользователю внутри мобильного Telegram: системное меню
+ * «Поделиться» (Web Share API с файлами), иначе — предложение открыть кабинет
+ * в браузере, где скачивание работает.
+ */
+export async function deliverFileInMiniApp(file: File, browserUrl: string): Promise<'shared' | 'cancelled' | 'browser' | 'dismissed'> {
+  const nav = typeof navigator !== 'undefined' ? (navigator as Navigator & { canShare?(data: ShareData): boolean }) : null
+  if (nav && typeof nav.share === 'function' && typeof nav.canShare === 'function') {
+    let canShareFile = false
+    try {
+      canShareFile = nav.canShare({ files: [file] })
+    } catch {
+      canShareFile = false
+    }
+    if (canShareFile) {
+      try {
+        await nav.share({ files: [file], title: file.name })
+        return 'shared'
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return 'cancelled'
+      }
+    }
+  }
+  const open = await confirmAction('Скачать файл внутри Telegram нельзя. Открыть кабинет в браузере, чтобы сохранить выгрузку?')
+  if (open && openInExternalBrowser(browserUrl)) return 'browser'
+  return 'dismissed'
 }
 
 /* ----------------------------------------------------- viewport и оформление --- */
@@ -387,6 +543,7 @@ export function initMiniApp(
   }
   win.addEventListener('resize', onViewport)
   win.addEventListener('orientationchange', onViewport)
+  if (win.document) safeCall('linkInterceptor', () => installLinkInterceptor(win.document, win))
   return webApp
 }
 
@@ -490,6 +647,7 @@ export function __resetMiniAppForTests(): void {
   pendingStartRoute = null
   readySent = false
   closingConfirmationRequests = 0
+  swipeLocks = 0
   backHandlers.splice(0, backHandlers.length)
   backListeners.clear()
 }

@@ -19,7 +19,8 @@
     "supabase:auth": "node scripts/supabase-auth-setup.mjs",
     "bot:setup": "node scripts/telegram-bot-setup.mjs",
     "check:dist": "node scripts/check-dist.mjs",
-    "bot:menu": "node scripts/telegram-bot-setup.mjs --menu-only"
+    "bot:menu": "node scripts/telegram-bot-setup.mjs --menu-only",
+    "e2e": "node scripts/e2e-mini-app.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",
@@ -34,10 +35,12 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.17",
+    "@twa-dev/sdk": "^8.0.2",
     "@types/node": "^26.6.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "playwright-core": "^1.63.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3",

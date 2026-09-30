@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { getMiniApp, pushBackHandler, requestClosingConfirmation } from './telegram-mini-app'
+import { getMiniApp, lockVerticalSwipes, pushBackHandler, requestClosingConfirmation } from './telegram-mini-app'
 
 /**
  * Пока `active` — BackButton Telegram вызывает `handler` (например, закрывает
@@ -20,4 +20,12 @@ export function useTelegramClosingConfirmation(dirty: boolean) {
     if (!dirty) return
     return requestClosingConfirmation()
   }, [dirty])
+}
+
+/** Пока открыто окно — свайп вниз внутри него не сворачивает Mini App. */
+export function useTelegramSwipeLock(active: boolean) {
+  useEffect(() => {
+    if (!active) return
+    return lockVerticalSwipes()
+  }, [active])
 }
