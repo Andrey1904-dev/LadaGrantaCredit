@@ -13,6 +13,7 @@ import {
 } from '../../utils/format'
 import { annuityPayment, remainingBalance } from '../../utils/loan'
 import type { Loan } from '../../types/domain'
+import { confirmAction } from '../../lib/telegram-mini-app'
 
 /** Режим 1: «Мой график» — реальный кредит из БД + внесённые платежи из transactions */
 export default function MySchedule() {
@@ -214,9 +215,9 @@ export default function MySchedule() {
                   type="button"
                   aria-label={`Удалить платёж от ${fmtDate(p.date)}`}
                   onClick={() => {
-                    if (window.confirm('Удалить этот платёж из истории?')) {
-                      void removeTransaction(p.id)
-                    }
+                    void confirmAction('Удалить этот платёж из истории?').then((ok) => {
+                      if (ok) void removeTransaction(p.id)
+                    })
                   }}
                   className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-[8px] px-2.5 text-[12px] font-semibold text-[#A9AFB7] transition-colors hover:bg-[#EF4444]/15 hover:text-[#EF4444]"
                 >

@@ -124,3 +124,60 @@ export function plural(value, one, few, many) {
   if (last === 1) return one
   return many
 }
+
+/* ------------------------------------------------------- Telegram Mini App --- */
+
+/**
+ * Короткие ключи разделов, которые сайт принимает в `?screen=` (кнопки web_app)
+ * и в `startapp` (прямые ссылки). Должны совпадать с START_ROUTES в
+ * src/lib/telegram-mini-app.ts.
+ */
+export const MINI_APP_SCREENS = Object.freeze(['home', 'credit', 'expenses', 'service', 'garage', 'telegram'])
+
+/** Текст кнопки меню бота, открывающей Mini App. */
+export const MINI_APP_MENU_TEXT = 'Кабинет'
+
+const LOCAL_HOST_RE = /^(localhost|127(?:\.\d{1,3}){3}|0\.0\.0\.0|\[::1?\])$/i
+
+/**
+ * Проверяет и нормализует публичный адрес сайта для кнопок `web_app`.
+ * Telegram открывает Mini App только по HTTPS; hash убирается, потому что в нём
+ * Telegram передаёт параметры запуска (а сайт использует HashRouter).
+ * Возвращает '' для пустого, не-HTTPS, локального или некорректного адреса.
+ */
+export function normalizeMiniAppUrl(value) {
+  if (typeof value !== 'string' || !value.trim()) return ''
+  let url
+  try {
+    url = new URL(value.trim())
+  } catch {
+    return ''
+  }
+  if (url.protocol !== 'https:' || url.username || url.password) return ''
+  if (!url.hostname || LOCAL_HOST_RE.test(url.hostname)) return ''
+  url.hash = ''
+  return url.toString()
+}
+
+/**
+ * Адрес Mini App (опционально — с разделом `?screen=<key>` из белого списка).
+ * Неизвестный раздел игнорируется: открывается стартовый экран.
+ */
+export function miniAppUrl(webAppUrl, screen = '') {
+  const base = normalizeMiniAppUrl(webAppUrl)
+  if (!base) return ''
+  if (!screen || !MINI_APP_SCREENS.includes(screen)) return base
+  const url = new URL(base)
+  url.searchParams.set('screen', screen)
+  return url.toString()
+}
+
+/**
+ * Кнопка меню бота для setChatMenuButton: Mini App, если адрес корректен,
+ * иначе — стандартный список команд (с явным признаком для логов).
+ */
+export function miniAppMenuButton(webAppUrl, text = MINI_APP_MENU_TEXT) {
+  const url = normalizeMiniAppUrl(webAppUrl)
+  if (!url) return { type: 'commands' }
+  return { type: 'web_app', text, web_app: { url } }
+}

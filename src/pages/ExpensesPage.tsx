@@ -25,6 +25,7 @@ import { fmtDate, fmtMileage, fmtMoney, fmtNumber } from '../utils/format'
 import { TCO_BENCHMARK, forecastYear, monthlySeries, ownershipCost } from '../utils/stats'
 import { buildServicePlan, engineInfo } from '../lib/service'
 import { taxRateFor, transportTax } from '../lib/tax'
+import { confirmAction } from '../lib/telegram-mini-app'
 
 /** Вкладка 3: Расходы — аналитика стоимости владения, Donut-диаграмма и лента операций */
 export default function ExpensesPage() {
@@ -521,9 +522,9 @@ export default function ExpensesPage() {
                         type="button"
                         aria-label={`Удалить операцию ${meta.label} на сумму ${fmtMoney(t.amount)}`}
                         onClick={() => {
-                          if (window.confirm('Удалить эту запись о расходе?')) {
-                            void removeTransaction(t.id)
-                          }
+                          void confirmAction('Удалить эту запись о расходе?').then((ok) => {
+                      if (ok) void removeTransaction(t.id)
+                    })
                         }}
                         className="flex h-11 w-11 items-center justify-center rounded-[8px] text-[#A9AFB7] transition-colors hover:bg-[#EF4444]/15 hover:text-[#EF4444]"
                       >

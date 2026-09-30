@@ -71,6 +71,23 @@ jobs:
           VITE_TELEGRAM_BOT_USERNAME: ${{ vars.VITE_TELEGRAM_BOT_USERNAME }}
           VITE_TELEGRAM_API_URL: ${{ vars.VITE_TELEGRAM_API_URL }}
 
+      # E2E Telegram Mini App в настоящем Chrome (предустановлен на раннере ubuntu-24.04):
+      # обычный браузер, запуск из Telegram, BackButton, viewport/safe area, deep links,
+      # отказ SDK, ширина 320 px. Без браузера шаг падает (E2E_REQUIRED=1).
+      - name: E2E Telegram Mini App
+        run: npm run e2e
+        env:
+          E2E_REQUIRED: '1'
+
+      - name: Сохранить скриншоты E2E
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: node_modules/.tmp/e2e/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Setup Pages
         if: github.event_name != 'pull_request'
         uses: actions/configure-pages@v6

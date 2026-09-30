@@ -1,15 +1,36 @@
-import { useEffect, type ReactNode } from 'react'
+import { useCallback, useEffect, type ReactNode } from 'react'
 import { CloseIcon } from './icons'
+import { useTelegramBackHandler, useTelegramClosingConfirmation, useTelegramSwipeLock } from '../lib/telegram-mini-app-hooks'
+import { confirmAction } from '../lib/telegram-mini-app'
 
 interface SheetProps {
   open: boolean
   onClose(): void
   title: string
   children: ReactNode
+  /**
+   * В форме есть несохранённые изменения. Используется только внутри Telegram
+   * Mini App: BackButton спросит подтверждение, а закрытие Mini App — предупредит.
+   */
+  dirty?: boolean
 }
 
 /** Модальное окно в формате BottomSheet (снизу экрана на мобильном, по центру на десктопе) */
-export default function Sheet({ open, onClose, title, children }: SheetProps) {
+export default function Sheet({ open, onClose, title, children, dirty = false }: SheetProps) {
+  // BackButton Telegram закрывает окно, а не уводит со страницы.
+  const handleTelegramBack = useCallback(() => {
+    if (!dirty) {
+      onClose()
+      return
+    }
+    void confirmAction('Закрыть без сохранения? Введённые данные будут потеряны.').then((ok) => {
+      if (ok) onClose()
+    })
+  }, [dirty, onClose])
+  useTelegramBackHandler(open, handleTelegramBack)
+  useTelegramClosingConfirmation(open && dirty)
+  useTelegramSwipeLock(open)
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -25,7 +46,7 @@ export default function Sheet({ open, onClose, title, children }: SheetProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
+      className="tg-fit-viewport fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -35,7 +56,7 @@ export default function Sheet({ open, onClose, title, children }: SheetProps) {
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="animate-sheet-up relative max-h-[92dvh] w-full max-w-[500px] overflow-y-auto rounded-t-[14px] border-t border-[#363B43] bg-[#1A1D22] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 text-[#F3F4F4] sm:rounded-[12px] sm:border sm:pb-6">
+      <div className="tg-sheet-panel animate-sheet-up relative max-h-[92dvh] w-full max-w-[500px] overflow-y-auto rounded-t-[14px] border-t border-[#363B43] bg-[#1A1D22] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 text-[#F3F4F4] sm:rounded-[12px] sm:border sm:pb-6">
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[#363B43] sm:hidden" />
         <div className="mb-4 flex items-center justify-between border-b border-[#363B43]/70 pb-3">
           <div className="flex items-center gap-2">

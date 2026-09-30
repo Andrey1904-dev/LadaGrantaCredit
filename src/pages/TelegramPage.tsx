@@ -36,6 +36,7 @@ import {
   type TelegramApiHealth,
   type TelegramLinkStatus,
 } from '../lib/telegram'
+import { confirmAction } from '../lib/telegram-mini-app'
 
 const COMMANDS = [
   { command: '/garage', title: 'Мой автомобиль', detail: 'Пробег и светофор ОСАГО', Icon: Gauge },
@@ -175,7 +176,7 @@ export default function TelegramPage() {
   }
 
   const disconnectAccount = async () => {
-    if (!window.confirm('Отключить Telegram от этого аккаунта?')) return
+    if (!(await confirmAction('Отключить Telegram от этого аккаунта?'))) return
     setBusy(true)
     setNotice('')
     setLinkError('')

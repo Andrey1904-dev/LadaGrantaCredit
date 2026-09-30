@@ -49,6 +49,7 @@ import {
   buildMaintenanceCsv,
   downloadTextFile,
 } from '../lib/backup'
+import { confirmAction } from '../lib/telegram-mini-app'
 
 /** Вкладка 4: Гараж — паспорт LADA Granta Sport, выбор цвета кузова (визуал), ОСАГО и журнал ТО */
 export default function GaragePage() {
@@ -317,9 +318,9 @@ export default function GaragePage() {
                     type="button"
                     aria-label={`Удалить запись ТО от ${fmtDate(m.date)}`}
                     onClick={() => {
-                      if (window.confirm('Удалить запись из журнала ТО?')) {
-                        void removeMaintenance(m.id)
-                      }
+                      void confirmAction('Удалить запись из журнала ТО?').then((ok) => {
+                      if (ok) void removeMaintenance(m.id)
+                    })
                     }}
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[8px] text-[#A9AFB7] transition-colors hover:bg-[#EF4444]/15 hover:text-[#EF4444]"
                   >

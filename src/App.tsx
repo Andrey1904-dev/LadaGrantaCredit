@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppDataProvider } from './context/AppDataContext'
 import Layout from './components/Layout'
 import SplashScreen from './components/SplashScreen'
+import TelegramMiniAppBridge from './components/TelegramMiniAppBridge'
 import { Spinner } from './components/ui'
 import AuthPage from './pages/AuthPage'
 import DashboardPage from './pages/DashboardPage'
@@ -41,6 +42,7 @@ export default function App() {
     <HashRouter>
       <AuthProvider>
         <SplashScreen />
+        <TelegramMiniAppBridge />
         <Routes>
           <Route
             path="/auth"

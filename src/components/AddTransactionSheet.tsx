@@ -28,6 +28,8 @@ export default function AddTransactionSheet({
   const [mileage, setMileage] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  // Снимок значений на момент открытия — чтобы понять, есть ли несохранённые правки.
+  const [initialSnapshot, setInitialSnapshot] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -41,6 +43,14 @@ export default function AddTransactionSheet({
           : '',
       )
       setError('')
+      setInitialSnapshot(
+        JSON.stringify([
+          editingTransaction.category,
+          String(editingTransaction.amount),
+          toDateInputValue(new Date(editingTransaction.date)),
+          editingTransaction.mileage_at_transaction !== null ? String(editingTransaction.mileage_at_transaction) : '',
+        ]),
+      )
       return
     }
     setCategory(initialCategory)
@@ -51,7 +61,18 @@ export default function AddTransactionSheet({
     setDate(toDateInputValue(new Date()))
     setMileage(car ? String(car.current_mileage) : '')
     setError('')
+    setInitialSnapshot(
+      JSON.stringify([
+        initialCategory,
+        initialCategory === 'loan' && loan ? String(Math.round(loan.monthly_payment)) : '',
+        toDateInputValue(new Date()),
+        car ? String(car.current_mileage) : '',
+      ]),
+    )
   }, [open, initialCategory, editingTransaction, car, loan])
+
+  const dirty = open && !saving && initialSnapshot !== '' &&
+    JSON.stringify([category, amount, date, mileage]) !== initialSnapshot
 
   const meta = CATEGORY_META[category]
   const showMileage = meta.requiresMileage || meta.suggestsMileage
@@ -114,6 +135,7 @@ export default function AddTransactionSheet({
       open={open}
       onClose={onClose}
       title={editingTransaction ? 'Редактировать расход' : 'Новый расход'}
+      dirty={dirty}
     >
       <div className="mb-4">
         <span className="mb-2 block text-[12.5px] font-semibold text-[#A9AFB7]">
