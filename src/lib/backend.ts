@@ -23,6 +23,8 @@ export interface AuthSettings {
 
 export interface AuthApi {
   getUser(): Promise<AuthUser | null>
+  /** Токен текущей облачной сессии; null в локальном демо-режиме */
+  getAccessToken(): Promise<string | null>
   signIn(email: string, password: string): Promise<AuthUser>
   signUp(email: string, password: string): Promise<SignUpResult>
   signOut(): Promise<void>

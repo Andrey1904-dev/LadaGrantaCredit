@@ -12,10 +12,11 @@ dist
 dist-ssr
 *.local
 
-# Environment variables — never commit real Supabase keys
+# Environment variables — never commit Supabase or Telegram secrets
 .env
 .env.local
 .env.*.local
+bot/.env
 
 # Editor directories and files
 .vscode/*

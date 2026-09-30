@@ -35,6 +35,10 @@ await build({
 
 try {
   execFileSync(process.execPath, ['--test', outfile], { stdio: 'inherit', cwd: root });
+  execFileSync(process.execPath, ['--test', path.join(root, 'tests', 'telegram.test.mjs')], {
+    stdio: 'inherit',
+    cwd: root,
+  });
 } catch (e) {
   process.exit(e.status ?? 1);
 }

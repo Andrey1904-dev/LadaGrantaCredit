@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { CardIcon, CarIcon, HomeIcon, WalletIcon, WrenchIcon } from './icons'
+import { BotIcon, CardIcon, CarIcon, HomeIcon, WalletIcon, WrenchIcon } from './icons'
 
 export const NAV_TABS = [
   { to: '/', label: 'Главная', Icon: HomeIcon, end: true },
@@ -7,6 +7,7 @@ export const NAV_TABS = [
   { to: '/expenses', label: 'Расходы', Icon: WalletIcon, end: false },
   { to: '/service', label: 'ТО', Icon: WrenchIcon, end: false },
   { to: '/garage', label: 'Гараж', Icon: CarIcon, end: false },
+  { to: '/telegram', label: 'Бот', Icon: BotIcon, end: false },
 ]
 
 /** Нижняя панель навигации с отчётливым красным акцентом активной вкладки и поддержкой safe-area */
@@ -16,7 +17,7 @@ export default function BottomNav() {
       aria-label="Основная навигация"
       className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#363B43] bg-[#1A1D22]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
     >
-      <div className="mx-auto grid max-w-[680px] grid-cols-5 px-1">
+      <div className="mx-auto grid max-w-[760px] grid-cols-6 px-1">
         {NAV_TABS.map(({ to, label, Icon, end }) => (
           <NavLink
             key={to}
