@@ -14,9 +14,10 @@
     "bot:local": "node --env-file=bot/.env bot/server.mjs",
     "bot:test": "node --test tests/telegram.test.mjs",
     "check": "npm run typecheck && npm test && npm run smoke && npm run build",
-    "smoke": "node scripts/smoke-demo.mjs && node scripts/smoke-build.mjs && node scripts/smoke-build.mjs --blank && node scripts/smoke-build.mjs --empty",
+    "smoke": "node scripts/smoke-demo.mjs && node scripts/smoke-build.mjs && node scripts/smoke-build.mjs --blank && node scripts/smoke-build.mjs --empty && node scripts/smoke-telegram-config.mjs && node scripts/smoke-telegram-api.mjs",
     "images": "node scripts/prepare-images.mjs",
-    "supabase:auth": "node scripts/supabase-auth-setup.mjs"
+    "supabase:auth": "node scripts/supabase-auth-setup.mjs",
+    "bot:setup": "node scripts/telegram-bot-setup.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",

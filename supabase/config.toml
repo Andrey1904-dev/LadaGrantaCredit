@@ -1,0 +1,9 @@
+# Конфигурация Supabase CLI для проекта LADA Кредит & Гараж.
+# Функция telegram-api сама проверяет access token сайта (Supabase Auth)
+# и секрет webhook, поэтому встроенная проверка JWT выключена:
+# без этого Telegram не смог бы доставлять обновления.
+
+project_id = "ladagrantacredit"
+
+[functions.telegram-api]
+verify_jwt = false
