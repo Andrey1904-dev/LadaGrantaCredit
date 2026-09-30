@@ -15,7 +15,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Основная навигация"
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-[#363B43] bg-[#1A1D22]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
+      className="tg-bottom-fixed fixed bottom-0 left-0 right-0 z-40 border-t border-[#363B43] bg-[#1A1D22]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md"
     >
       <div className="mx-auto grid max-w-[760px] grid-cols-6 px-1">
         {NAV_TABS.map(({ to, label, Icon, end }) => (

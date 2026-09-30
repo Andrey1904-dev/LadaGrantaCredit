@@ -17,6 +17,8 @@ import {
   formatMileage,
   formatMoney,
   hashLinkCode,
+  miniAppMenuButton,
+  miniAppUrl,
   monthTransactions,
   nextPaymentDate,
   normalizeLinkCode,
@@ -327,21 +329,18 @@ export function createBot({
     }
   }
 
-  function siteCabinetUrl() {
-    if (!webAppUrl) return ''
-    try {
-      const url = new URL(webAppUrl)
-      url.hash = '/telegram'
-      return url.toString()
-    } catch {
-      return ''
-    }
+  /** Адрес Mini App (кабинет на сайте); '' — если WEB_APP_URL не задан или не HTTPS. */
+  function siteCabinetUrl(screen = '') {
+    return miniAppUrl(webAppUrl, screen)
   }
 
-  /** Кнопка перехода в веб-кабинет (если адрес сайта настроен). */
-  function cabinetRow() {
-    const url = siteCabinetUrl()
-    return url ? [[{ text: '↗ Открыть кабинет', url }]] : []
+  /**
+   * Кнопка запуска кабинета как Telegram Mini App (тип `web_app`, не `url`).
+   * Бот работает только в личных чатах, где такие кнопки поддерживаются.
+   */
+  function cabinetRow(screen = '', text = '📱 Открыть кабинет') {
+    const url = siteCabinetUrl(screen)
+    return url ? [[{ text, web_app: { url } }]] : []
   }
 
   /**
@@ -764,7 +763,8 @@ export function createBot({
       '<i>⏱ Код одноразовый · действует 10 минут</i>',
       '<i>Не пересылайте код посторонним — это ключ к вашему кабинету.</i>',
     ].join('\n')
-    return sendMessage(chatId, text, { reply_markup: cabinetRow().length ? { inline_keyboard: cabinetRow() } : undefined })
+    const openBotSection = cabinetRow('telegram', '📱 Ввести код в кабинете')
+    return sendMessage(chatId, text, { reply_markup: openBotSection.length ? { inline_keyboard: openBotSection } : undefined })
   }
 
   async function unlinkChat(chatId) {
@@ -904,7 +904,12 @@ export function createBot({
   async function applyBotProfile() {
     await telegramCall('setMyDescription', { description: BOT_DESCRIPTION })
     await telegramCall('setMyShortDescription', { short_description: BOT_SHORT_DESCRIPTION })
-    await telegramCall('setChatMenuButton', { menu_button: { type: 'commands' } })
+    // Кнопка меню открывает Mini App; команды остаются доступны через «/» и меню команд.
+    const menuButton = miniAppMenuButton(webAppUrl)
+    if (menuButton.type !== 'web_app') {
+      logger.warn?.('[telegram] WEB_APP_URL is empty or not HTTPS: menu button falls back to the command list.')
+    }
+    await telegramCall('setChatMenuButton', { menu_button: menuButton })
     await telegramCall('setMyCommands', { commands: BOT_COMMANDS })
   }
 

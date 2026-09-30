@@ -20,7 +20,8 @@ const root = path.resolve(here, '..')
 const tmpDir = path.join(root, 'node_modules', '.tmp')
 fs.mkdirSync(tmpDir, { recursive: true })
 
-const TOKEN = '8703956173:AAH9-Z3v-gTWQuDq4jakgFeP7MbqXkj3uv0'
+// Фиктивный токен нужного формата (НЕ настоящий): проверяем, что «токен» в переменной URL распознаётся как ошибка.
+const TOKEN = '1234567890:AAFakeTokenForSmokeTests_0123456789'
 const FUNCTION_URL = 'https://dcgurmwvpgzmlfivxoso.supabase.co/functions/v1/telegram-api'
 
 let failed = 0

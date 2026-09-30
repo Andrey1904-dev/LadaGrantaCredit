@@ -31,7 +31,7 @@ export default function Layout() {
   return (
     <div className="min-h-dvh w-full bg-[#0E1013] text-[#F3F4F4]">
       {/* Верхняя шапка */}
-      <header className="sticky top-0 z-40 border-b border-[#363B43] bg-[#0E1013]/92 backdrop-blur-md">
+      <header className="tg-top-sticky sticky top-0 z-40 border-b border-[#363B43] bg-[#0E1013]/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-[960px] items-center justify-between gap-3 px-4 py-2.5">
           <div className="flex items-center gap-3">
             <img

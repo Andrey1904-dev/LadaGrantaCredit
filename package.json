@@ -13,11 +13,13 @@
     "bot:start": "node bot/server.mjs",
     "bot:local": "node --env-file=bot/.env bot/server.mjs",
     "bot:test": "node --test tests/telegram.test.mjs",
-    "check": "npm run typecheck && npm test && npm run smoke && npm run build",
-    "smoke": "node scripts/smoke-demo.mjs && node scripts/smoke-build.mjs && node scripts/smoke-build.mjs --blank && node scripts/smoke-build.mjs --empty && node scripts/smoke-telegram-config.mjs && node scripts/smoke-telegram-api.mjs",
+    "check": "npm run typecheck && npm test && npm run smoke && npm run build && npm run check:dist",
+    "smoke": "node scripts/smoke-demo.mjs && node scripts/smoke-build.mjs && node scripts/smoke-build.mjs --blank && node scripts/smoke-build.mjs --empty && node scripts/smoke-telegram-config.mjs && node scripts/smoke-telegram-api.mjs && node scripts/smoke-telegram-setup.mjs",
     "images": "node scripts/prepare-images.mjs",
     "supabase:auth": "node scripts/supabase-auth-setup.mjs",
-    "bot:setup": "node scripts/telegram-bot-setup.mjs"
+    "bot:setup": "node scripts/telegram-bot-setup.mjs",
+    "check:dist": "node scripts/check-dist.mjs",
+    "bot:menu": "node scripts/telegram-bot-setup.mjs --menu-only"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",

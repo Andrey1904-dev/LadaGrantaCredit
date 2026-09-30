@@ -243,3 +243,46 @@ input[type="number"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* ------------------------------------------------------------------------
+ * Telegram Mini App (класс html.tg-mini-app ставит src/lib/telegram-mini-app.ts
+ * только внутри Telegram; в обычном браузере правила ниже не действуют).
+ * Переменные --tg-app-* обновляются на viewportChanged / safeAreaChanged / resize.
+ * ---------------------------------------------------------------------- */
+html.tg-mini-app {
+  overscroll-behavior-y: none;
+}
+
+html.tg-mini-app body {
+  padding-top: var(--tg-app-inset-top, 0px);
+  padding-left: var(--tg-app-inset-left, 0px);
+  padding-right: var(--tg-app-inset-right, 0px);
+}
+
+/* Высота видимой области Mini App, а не единственный замер при старте */
+html.tg-mini-app .min-h-dvh {
+  min-height: var(--tg-app-viewport-stable-height, 100dvh);
+}
+
+html.tg-mini-app .tg-top-sticky {
+  top: var(--tg-app-inset-top, 0px);
+}
+
+/* Нижняя панель: над скрытой частью WebView и над системной областью */
+html.tg-mini-app .tg-bottom-fixed {
+  bottom: var(--tg-app-bottom-offset, 0px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-app-inset-bottom, 0px));
+  padding-left: var(--tg-app-inset-left, 0px);
+  padding-right: var(--tg-app-inset-right, 0px);
+}
+
+/* Модальные окна помещаются в видимую часть Mini App */
+html.tg-mini-app .tg-fit-viewport {
+  top: var(--tg-app-inset-top, 0px);
+  bottom: var(--tg-app-bottom-offset, 0px);
+}
+
+html.tg-mini-app .tg-sheet-panel {
+  max-height: calc(var(--tg-app-viewport-stable-height, 100dvh) * 0.92);
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px), var(--tg-app-inset-bottom, 0px));
+}

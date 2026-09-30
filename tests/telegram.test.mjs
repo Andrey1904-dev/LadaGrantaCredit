@@ -203,3 +203,124 @@ test('healthReport не считает бота здоровым без свеж
   assert.equal(bot.healthReport({ mode: 'polling', pollingStatus: 'online', lastSuccessfulAt: 1 }).ok, false)
   assert.equal(bot.healthReport({ mode: 'webhook', pollingStatus: 'online' }).ok, true)
 })
+
+/* ------------------------------------------------------- Telegram Mini App --- */
+
+const SITE = 'https://andrey1904-dev.github.io/LadaGrantaCredit/'
+
+function recordingBot(webAppUrl, { linked = false } = {}) {
+  return import('../bot/core.mjs').then(({ createBot }) => {
+    const sent = []
+    const warnings = []
+    const bot = createBot({
+      telegramToken: '8703956173:TEST-TOKEN-0123456789abcdefghij',
+      supabaseUrl: 'https://project.supabase.co',
+      supabaseAnonKey: 'anon',
+      supabaseServiceRoleKey: 'service',
+      webAppUrl,
+      now: () => Date.parse('2026-09-30T12:00:00Z'),
+      logger: { warn: (...args) => warnings.push(args.join(' ')), error() {} },
+      fetchImpl: async (url, init = {}) => {
+        const href = String(url)
+        if (href.startsWith('https://api.telegram.org/')) {
+          sent.push({ method: href.split('/').pop(), body: init.body ? JSON.parse(init.body) : null })
+          return new Response(JSON.stringify({ ok: true, result: {} }), { headers: { 'Content-Type': 'application/json' } })
+        }
+        if (href.includes('/rest/v1/telegram_links')) {
+          return new Response(linked ? '[{"user_id":"u"}]' : '[]', { headers: { 'Content-Type': 'application/json' } })
+        }
+        if (href.includes('/rest/v1/telegram_link_codes')) return new Response(null, { status: 201 })
+        return new Response('null', { headers: { 'Content-Type': 'application/json' } })
+      },
+    })
+    return { bot, sent, warnings }
+  })
+}
+
+const allButtons = (message) => (message?.body?.reply_markup?.inline_keyboard ?? []).flat()
+
+test('normalizeMiniAppUrl принимает только публичный HTTPS и убирает hash', async () => {
+  const { normalizeMiniAppUrl } = await import('../bot/format.mjs')
+  assert.equal(normalizeMiniAppUrl(SITE), SITE)
+  assert.equal(normalizeMiniAppUrl(` ${SITE}#/telegram `), SITE)
+  for (const bad of [
+    '', '   ', null, undefined, 'not a url', 'http://andrey1904-dev.github.io/LadaGrantaCredit/',
+    'https://localhost:5173/', 'https://127.0.0.1/', 'https://user:pass@example.com/', 'javascript:alert(1)',
+    'tg://resolve?domain=x',
+  ]) {
+    assert.equal(normalizeMiniAppUrl(bad), '', String(bad))
+  }
+})
+
+test('miniAppUrl добавляет только разделы из белого списка', async () => {
+  const { miniAppUrl } = await import('../bot/format.mjs')
+  assert.equal(miniAppUrl(SITE), SITE)
+  assert.equal(miniAppUrl(SITE, 'telegram'), `${SITE}?screen=telegram`)
+  assert.equal(miniAppUrl(SITE, '../admin'), SITE)
+  assert.equal(miniAppUrl('http://insecure.example/', 'garage'), '')
+})
+
+test('ключи разделов бота совпадают с белым списком сайта', async () => {
+  const { MINI_APP_SCREENS } = await import('../bot/format.mjs')
+  const { readFile } = await import('node:fs/promises')
+  const source = await readFile(new URL('../src/lib/telegram-mini-app.ts', import.meta.url), 'utf8')
+  const block = /START_ROUTES[^{]*\{([\s\S]*?)\}\)/.exec(source)?.[1] ?? ''
+  const siteKeys = [...block.matchAll(/^\s*([a-z]+):/gm)].map((m) => m[1])
+  for (const key of MINI_APP_SCREENS) assert.ok(siteKeys.includes(key), `ключ ${key} есть в START_ROUTES`)
+})
+
+test('miniAppMenuButton: web_app с URL из конфигурации, иначе commands', async () => {
+  const { miniAppMenuButton } = await import('../bot/format.mjs')
+  assert.deepEqual(miniAppMenuButton(SITE), { type: 'web_app', text: 'Кабинет', web_app: { url: SITE } })
+  assert.deepEqual(miniAppMenuButton(''), { type: 'commands' })
+  assert.deepEqual(miniAppMenuButton('http://example.com/'), { type: 'commands' })
+})
+
+test('главное меню открывает кабинет кнопкой web_app (не url)', async () => {
+  const { bot, sent } = await recordingBot(SITE)
+  await bot.handleUpdate({ message: { from: { id: 7 }, chat: { id: 777, type: 'private' }, text: '/menu' } })
+  const buttons = allButtons(sent.findLast((m) => m.method === 'sendMessage' || m.method === 'sendPhoto'))
+  const open = buttons.find((b) => b.web_app)
+  assert.ok(open, 'есть кнопка web_app')
+  assert.equal(open.web_app.url, SITE)
+  assert.equal(open.url, undefined)
+  assert.ok(!buttons.some((b) => typeof b.url === 'string'), 'обычных url-кнопок кабинета нет')
+  // Существующие inline-кнопки разделов сохранены.
+  for (const key of ['garage', 'service', 'spending', 'credit']) {
+    assert.ok(buttons.some((b) => b.callback_data === key), key)
+  }
+})
+
+test('сообщение с кодом ведёт в раздел «Бот» Mini App через ?screen=telegram', async () => {
+  const { bot, sent } = await recordingBot(`${SITE}#/telegram`)
+  await bot.handleUpdate({ message: { from: { id: 7 }, chat: { id: 777, type: 'private' }, text: '/link' } })
+  const [button] = allButtons(sent.at(-1))
+  assert.equal(button.web_app.url, `${SITE}?screen=telegram`)
+})
+
+test('без WEB_APP_URL или с некорректным адресом кнопка кабинета не показывается', async () => {
+  for (const url of ['', 'http://andrey1904-dev.github.io/LadaGrantaCredit/', 'мусор']) {
+    const { bot, sent } = await recordingBot(url)
+    await bot.handleUpdate({ message: { from: { id: 7 }, chat: { id: 777, type: 'private' }, text: '/menu' } })
+    const buttons = allButtons(sent.findLast((m) => m.method === 'sendMessage' || m.method === 'sendPhoto'))
+    assert.ok(!buttons.some((b) => b.web_app || b.url), `нет кнопки кабинета для «${url}»`)
+    assert.ok(buttons.some((b) => b.callback_data === 'garage'))
+  }
+})
+
+test('applyBotProfile ставит кнопку меню web_app и сохраняет команды', async () => {
+  const { BOT_COMMANDS } = await import('../bot/core.mjs')
+  const { bot, sent } = await recordingBot(SITE)
+  await bot.applyBotProfile()
+  const menu = sent.find((m) => m.method === 'setChatMenuButton')
+  assert.deepEqual(menu.body.menu_button, { type: 'web_app', text: 'Кабинет', web_app: { url: SITE } })
+  const commands = sent.find((m) => m.method === 'setMyCommands')
+  assert.deepEqual(commands.body.commands, BOT_COMMANDS)
+})
+
+test('applyBotProfile без корректного URL откатывается на commands с предупреждением', async () => {
+  const { bot, sent, warnings } = await recordingBot('http://insecure.example/')
+  await bot.applyBotProfile()
+  assert.deepEqual(sent.find((m) => m.method === 'setChatMenuButton').body.menu_button, { type: 'commands' })
+  assert.ok(warnings.some((w) => /WEB_APP_URL/.test(w)))
+})

@@ -17,6 +17,23 @@ import path from 'node:path';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const outfile = path.join(root, 'node_modules', '.tmp', 'unit.test.cjs');
+const miniAppOutfile = path.join(root, 'node_modules', '.tmp', 'mini-app.test.cjs');
+
+// Интеграция Telegram Mini App — отдельный бандл без браузерных заглушек setup.ts.
+await build({
+  entryPoints: [path.join(root, 'tests', 'mini-app.test.ts')],
+  bundle: true,
+  platform: 'node',
+  format: 'cjs',
+  target: 'node20',
+  outfile: miniAppOutfile,
+  logLevel: 'error',
+  define: {
+    'process.env.NODE_ENV': '"test"',
+    'import.meta.env': JSON.stringify({ DEV: false }),
+  },
+  external: ['node:test', 'node:assert/strict'],
+});
 
 await build({
   entryPoints: [path.join(root, 'tests', 'unit.test.ts')],
@@ -35,6 +52,7 @@ await build({
 
 try {
   execFileSync(process.execPath, ['--test', outfile], { stdio: 'inherit', cwd: root });
+  execFileSync(process.execPath, ['--test', miniAppOutfile], { stdio: 'inherit', cwd: root });
   execFileSync(process.execPath, ['--test', path.join(root, 'tests', 'telegram.test.mjs')], {
     stdio: 'inherit',
     cwd: root,

@@ -242,10 +242,11 @@ UX бота выстроен как «живой экран»: нажатие in
 ```bash
 npx supabase login
 TELEGRAM_BOT_TOKEN=123456:AA... SUPABASE_ACCESS_TOKEN=sbp_... \
+WEB_APP_URL=https://andrey1904-dev.github.io/LadaGrantaCredit/ \
   node scripts/telegram-bot-setup.mjs --deploy
 ```
 
-Скрипт развернёт функцию `telegram-api` (в [`supabase/config.toml`](supabase/config.toml) у неё `verify_jwt = false`: JWT проверяет сама функция), положит секреты `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WEB_APP_URL`, поставит webhook, обновит описание/команды/кнопку меню и проверит `/health`. Без `--deploy` он только перенастраивает уже развёрнутую функцию, `--check` — просто проверяет здоровье.
+Скрипт развернёт функцию `telegram-api` (в [`supabase/config.toml`](supabase/config.toml) у неё `verify_jwt = false`: JWT проверяет сама функция), положит секреты `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `WEB_APP_URL`, поставит webhook, обновит описание и команды, поставит кнопку меню **Telegram Mini App** (`web_app`) и проверит `/health`. `WEB_APP_URL` обязателен (публичный HTTPS-адрес сайта), значения по умолчанию в коде нет. Без `--deploy` скрипт только перенастраивает уже развёрнутую функцию; `npm run bot:menu` меняет одну кнопку меню. Токен и секрет вебхука в выводе маскируются.
 
 Вручную: `npx supabase functions deploy telegram-api --project-ref <ref>`, затем `https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<ref>.supabase.co/functions/v1/telegram-api&secret_token=<ваш-секрет>`. Webhook принимается на корне функции и на `/telegram` — обязательно с заголовком `X-Telegram-Bot-Api-Secret-Token`.
 
@@ -271,6 +272,12 @@ VITE_TELEGRAM_API_URL=https://<project-ref>.supabase.co/functions/v1/telegram-ap
 ### Шаг 4. Привязка аккаунта
 
 На сайте откройте раздел **Бот**, в Telegram отправьте `/link`, введите одноразовый код в кабинете. Отключить доступ можно на сайте или командой `/unlink`.
+
+### Telegram Mini App
+
+Сайт открывается прямо внутри Telegram: кнопкой меню «Кабинет» в чате с ботом и inline-кнопкой «📱 Открыть кабинет» (обе — тип `web_app`). Код интеграции изолирован в [`src/lib/telegram-mini-app.ts`](src/lib/telegram-mini-app.ts) и [`src/components/TelegramMiniAppBridge.tsx`](src/components/TelegramMiniAppBridge.tsx): SDK `telegram-web-app.js` загружается только при запуске из Telegram, в обычном браузере сайт не меняется. Поддерживаются BackButton (синхронизирован с навигацией, на главной скрыт), размеры/safe area WebView, тёмная шапка Telegram и deep links `https://t.me/<bot>?startapp=garage` (ключи `home`, `credit`, `expenses`, `service`, `garage`, `telegram`). Вход — штатный Supabase; автоматического входа по Telegram нет.
+
+Настройка BotFather, итог проверки хостинга и матрица ручной приёмки — в [`docs/telegram-mini-app.md`](docs/telegram-mini-app.md).
 
 ### Если раздел «Бот» показывает ошибку
 
@@ -572,16 +579,19 @@ supabase/schema.sql  # таблицы + RLS
 
 ```bash
 npm run typecheck          # типы
-npm test                   # 57 модульных тестов: аннуитет, досрочка, расход топлива,
-                           #   план ТО, налог, гарантия, чек-лист, CSV-экспорт, демо-бэкенд
+npm test                   # модульные тесты: аннуитет, досрочка, расход топлива,
+                           #   план ТО, налог, гарантия, чек-лист, CSV-экспорт, демо-бэкенд,
+                           #   Telegram Mini App (tests/mini-app.test.ts) и бот (tests/telegram.test.mjs)
 npm run build              # tsc -b + vite build
 node scripts/smoke-demo.mjs   # 14 проверок демо-режима в сборке с ключами Supabase
 node scripts/smoke-telegram-config.mjs  # настройки и тексты ошибок раздела «Бот»
 node scripts/smoke-telegram-api.mjs     # контракт Supabase Edge Function telegram-api
+node scripts/smoke-telegram-setup.mjs   # скрипт настройки бота: кнопка меню Mini App без реального токена
+npm run check:dist         # после сборки: нет секретов/localhost/Service Worker в dist/
 npm run smoke              # всё перечисленное + SSR-рендер /auth, /, /credit, /expenses, /service, /garage
                            #   в трёх состояниях: с данными, пустой аккаунт, реальные контексты
 SMOKE_DUMP=1 npm run smoke # дополнительно выгрузит текст экранов в node_modules/.tmp/dump/
-npm run check              # типы + тесты + smoke + сборка одной командой
+npm run check              # типы + тесты + smoke + сборка + check:dist одной командой
 ```
 
 Браузера в CI нет, поэтому экраны проверяются серверным рендером (`react-dom/server`):
