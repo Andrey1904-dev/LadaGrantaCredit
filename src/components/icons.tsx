@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
   Battery,
   Bell,
+  Bot,
   Calendar,
   ChevronDown,
   ClipboardList,
@@ -55,6 +56,10 @@ const base = (className?: string) => className ?? 'w-5 h-5'
 
 export const HomeIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
   <LayoutDashboard className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
+)
+
+export const BotIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
+  <Bot className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
 )
 
 export const CardIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (

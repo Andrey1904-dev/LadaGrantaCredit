@@ -33,6 +33,12 @@ const supabaseAuth: AuthApi = {
     return toAuthUser(data.user)
   },
 
+  async getAccessToken() {
+    const { data, error } = await getSupabase().auth.getSession()
+    if (error) throw error
+    return data.session?.access_token ?? null
+  },
+
   async signIn(email, password) {
     const { data, error } = await getSupabase().auth.signInWithPassword({
       email: normalizeEmail(email),

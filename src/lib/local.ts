@@ -234,6 +234,11 @@ const localAuth: AuthApi = {
   async getUser() {
     return localStorage.getItem(KEYS.session) ? DEMO_USER : null
   },
+  async getAccessToken() {
+    // Локальный демонстрационный пользователь не имеет JWT и не может
+    // безопасно связать браузерные данные с Telegram-аккаунтом.
+    return null
+  },
   async signIn() {
     // Демо-кабинет открыт без проверки пароля: данные и так лежат только
     // в этом браузере. Сид гарантирует, что кабинет не будет пустым.

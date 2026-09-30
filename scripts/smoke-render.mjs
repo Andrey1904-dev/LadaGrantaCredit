@@ -23,6 +23,7 @@ import CreditPage from '../src/pages/CreditPage.tsx';
 import ExpensesPage from '../src/pages/ExpensesPage.tsx';
 import GaragePage from '../src/pages/GaragePage.tsx';
 import ServicePage from '../src/pages/ServicePage.tsx';
+import TelegramPage from '../src/pages/TelegramPage.tsx';
 
 const store = new Map();
 globalThis.localStorage = {
@@ -49,6 +50,7 @@ const ROUTES = [
   ['/expenses', ExpensesPage, 'расходы'],
   ['/service', ServicePage, 'то'],
   ['/garage', GaragePage, 'гараж'],
+  ['/telegram', TelegramPage, 'telegram-бот'],
 ];
 
 const mode = (process.argv.find((a) => a.startsWith('--mode=')) ?? '--mode=data').slice(7);

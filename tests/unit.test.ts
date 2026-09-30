@@ -507,6 +507,7 @@ describe('локальный (демо) бэкенд', () => {
     const user = await backend.auth.signIn(DEMO_CREDENTIALS.email, DEMO_CREDENTIALS.password)
     assert.equal(user.email, 'demo@lada.ru')
     assert.ok(await backend.auth.getUser())
+    assert.equal(await backend.auth.getAccessToken(), null, 'демо-пользователь не получает облачный JWT')
 
     const car = await backend.data.getCar(user.id)
     const loan = await backend.data.getLoan(user.id)

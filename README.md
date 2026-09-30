@@ -22,6 +22,7 @@
 | **ТО → Обкатка** | Что делать в первые недели после покупки: прогресс обкатки до 3 000 км и **чек-лист из 17 пунктов** — сроки по закону (учёт, ОСАГО, техосмотр), ТО-0 и первая замена масла, доработки с форумов (тросы ручника, антикор, уплотнители, защита картера). Отметки сохраняются |
 | **ТО → Справочник** | Заправочные объёмы и допуски (масло 3,2 л, МКПП 2,35 л, ОЖ, DOT-4), бензин для вашего мотора, шины 195/50 R16, давление 2,0 бар, момент затяжки колёс, паспорт Granta Sport |
 | **Моя Гранта** | Редактирование данных авто (номер, VIN, пробег, начальный пробег), выбор «исполнения кузова» (чёрный / белый, визуальное демо), напоминание об ОСАГО (индикатор при <14 дней), журнал ТО и ремонтов, **экспорт данных**: резервная копия JSON и выгрузка расходов/журнала ТО в CSV для Excel |
+| **Telegram Assistant** | Премиальный чат-preview и привязка аккаунта одноразовым кодом, сводки по автомобилю и ОСАГО, истории ТО, расходам и кредиту; команды `/garage`, `/service`, `/spending`, `/credit`, `/link`, `/unlink` |
 
 У каждой вкладки — свой кадр Granta Sport (трасса, автосалон, АЗС, сервис, гараж),
 см. [«Картинки»](#картинки).
@@ -36,6 +37,7 @@
 - **React Router 7** (`HashRouter` — корректная работа на GitHub Pages)
 - **lucide-react** (иконки), **clsx + tailwind-merge** (сборка классов)
 - **Supabase**: PostgreSQL + Auth + Row Level Security
+- **Telegram Bot API**: отдельный Node.js long-polling сервис с авторизацией через Supabase
 - **Chart.js** (`react-chartjs-2`) для диаграмм
 - **GitHub Pages + GitHub Actions** для хостинга
 
@@ -47,7 +49,7 @@ npm run dev        # http://localhost:5173
 npm run build      # проверка типов + сборка в dist/
 npm run typecheck  # tsc --noEmit
 npm test           # модульные тесты (node --test): кредит, топливо, ТО, налог, экспорт
-npm run smoke      # тест демо-режима + рендер всех 6 экранов в Node (без браузера)
+npm run smoke      # тест демо-режима + рендер всех 7 экранов в Node (без браузера)
 npm run check      # всё сразу: типы + тесты + smoke + сборка
 npm run images     # пересобрать WebP-версии картинок из public/images
 ```
@@ -214,6 +216,43 @@ node scripts/mock-supabase-auth.mjs --port 5174   # --autoconfirm, --quota N, --
 # VITE_SUPABASE_ANON_KEY=mock-anon-key
 npm run dev
 ```
+
+## Telegram-бот LADA Assistant
+
+В кабинете появился отдельный раздел **«Бот»** (`#/telegram`) в премиальной графитово-красной дизайн-системе сайта: живой preview чата, динамические сводки из кабинета и безопасная привязка Telegram. Это не только макет — сервер бота находится в `bot/server.mjs` и работает с Telegram Bot API и Supabase.
+
+Бот поддерживает команды `/garage`, `/service`, `/spending`, `/credit`, `/link`, `/unlink`, `/help` и inline-меню. Данные из Telegram-доступа показываются только в личном чате после явной привязки аккаунта. Точный остаток кредита пользователь по-прежнему сверяет с банком: бот повторяет расчёт кабинета по числу отмеченных платежей.
+
+### Подключение
+
+1. Создайте бота через [@BotFather](https://t.me/BotFather), сохраните его username и токен. Включите меню-команды вручную не обязательно — сервер установит их при запуске. Для аватара используйте `public/images/telegram-assistant-avatar.jpg` через `/setuserpic`; тот же фирменный арт бот отправляет в приветствии `/start`.
+2. Сначала примените `supabase/schema.sql`, затем **отдельно** `supabase/telegram.sql` в Supabase SQL Editor. Вторая схема добавляет таблицы связей и одноразовых кодов; у `anon` и `authenticated` намеренно нет RLS-политик на эти таблицы.
+3. Скопируйте `bot/.env.example` в `bot/.env` и заполните серверные переменные:
+   - `TELEGRAM_BOT_TOKEN` — токен BotFather;
+   - `SUPABASE_URL`, `SUPABASE_ANON_KEY`;
+   - `SUPABASE_SERVICE_ROLE_KEY` — секретный service-role key, **только на сервере**;
+   - `WEB_APP_URL` — публичный адрес кабинета, например `https://andrey1904-dev.github.io/LadaGrantaCredit/`;
+   - `CORS_ALLOWED_ORIGINS` — дополнительные origin сайта, если их несколько.
+4. Запустите API и long-polling бота на постоянном Node.js-хостинге (Node 20.6+, рекомендуется Node 22):
+
+   ```bash
+   npm run bot:start
+   ```
+
+   Процесс слушает `0.0.0.0:$PORT` (по умолчанию `3001`); для продакшена перед ним нужен HTTPS reverse proxy или managed-хостинг. Запускайте одну polling-инстанцию для токена.
+5. В `.env.local` сайта задайте публичные настройки (не секреты):
+
+   ```dotenv
+   VITE_TELEGRAM_BOT_USERNAME=your_bot_username
+   VITE_TELEGRAM_API_URL=/telegram-api
+   ```
+
+   В dev-режиме Vite проксирует относительный `/telegram-api` на серверный порт `3001`. Браузер не обращается к `localhost` напрямую. Для GitHub Pages задайте в **Settings → Secrets and variables → Actions → Variables** `VITE_TELEGRAM_BOT_USERNAME` и `VITE_TELEGRAM_API_URL` (последнее — полный HTTPS URL API, например `https://bot-api.example.com`). Не помещайте токен бота или service-role key в `VITE_*`.
+6. На сайте откройте раздел **Бот**, в личном Telegram-чате отправьте `/link` и введите одноразовый код в кабинете. Код хранится в БД только как SHA-256-хэш, действует 10 минут и используется один раз. Отключить доступ можно на сайте или командой `/unlink`.
+
+Backend endpoints: `GET /health`, `GET /api/telegram/link/status`, `POST /api/telegram/link/confirm`, `DELETE /api/telegram/link`. Перед привязкой API проверяет актуальный Supabase access token. Секрет Telegram никогда не попадает в сборку сайта. Unit-тесты форматов и расчётов бота входят в `npm test` (или отдельно `npm run bot:test`).
+
+> В репозитории нет токена BotFather и публичного API-домена, поэтому настоящий бот станет доступен после шага настройки; пока раздел сайта показывает интерактивный премиальный preview и честный статус конфигурации.
 
 ## Деплой на GitHub Pages
 
