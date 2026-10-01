@@ -63,7 +63,7 @@ export default function Prepayment() {
   if (!loan || !base) {
     return (
       <EmptyState
-        showSportDetail
+        showDuoDetail
         icon={<CardIcon className="h-6 w-6" />}
         title="Сначала добавьте кредит"
         text="Калькулятор досрочного погашения работает с вашим реальным остатком долга — заполните параметры во вкладке «Мой график»"

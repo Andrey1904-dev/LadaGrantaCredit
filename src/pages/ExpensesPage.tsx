@@ -174,7 +174,7 @@ export default function ExpensesPage() {
 
       {transactions.length === 0 ? (
         <EmptyState
-          showSportDetail
+          showDuoDetail
           icon={<WalletIcon className="h-6 w-6" />}
           title="Пока нет записанных расходов"
           text="Добавьте первую трату — заправку топливом (с пробегом), платёж по кредиту, страховку или ТО"

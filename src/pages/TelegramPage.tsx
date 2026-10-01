@@ -213,7 +213,7 @@ export default function TelegramPage() {
         media={{ asset: PAGE_MEDIA.dashboard.asset, caption: 'SIGNATURE · TELEGRAM' }}
         eyebrow="LADA ASSISTANT · DIGITAL GARAGE"
         title="Ваш гараж. Всегда на связи."
-        subtitle="Ключевые данные о Granta Sport — в вашем Telegram, без лишних экранов и ручного поиска."
+        subtitle="Ключевые данные о вашей LADA (Granta или Vesta) — в вашем Telegram, без лишних экранов и ручного поиска."
         priority
         action={
           TELEGRAM_BOT_URL ? (
@@ -475,7 +475,7 @@ export default function TelegramPage() {
         </Card>
 
         <TelegramPreview
-          carLabel={car ? 'LADA Granta Sport' : 'Автомобиль не добавлен'}
+          carLabel={car ? 'LADA Granta / Vesta' : 'Автомобиль не добавлен'}
           mileage={car ? fmtMileage(car.current_mileage) : 'добавьте автомобиль на сайте'}
           serviceLabel={serviceLabel}
           serviceState={serviceState}

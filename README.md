@@ -337,7 +337,7 @@ src/
 │                   # tax.ts (ставки транспортного налога по регионам),
 │                   # ownership.ts (чек-лист после покупки, гарантия, справочник),
 │                   # backup.ts (резервная копия JSON и выгрузка CSV),
-│                   # assets.ts (каталог фото Granta и выбор формата WebP)
+│                   # assets.ts (каталог фото дуэта Granta + Vesta и выбор формата WebP)
 ├── context/       # AuthContext (сессия + активный бэкенд), AppDataContext (CRUD + кэш)
 ├── components/    # Layout, BottomNav (5 вкладок), PageHero, Sheet, UI-кит,
 │                   # DonutChart, MonthlyChart, UpcomingEvents (календарь владельца)
@@ -348,7 +348,7 @@ src/
 │                   # заправкам), stats.ts (месяцы, стоимость владения, прогноз),
 │                   # format, date, cn
 └── types/         # доменные типы + database.types.ts (схема Supabase)
-public/images/       # кадры Granta Sport под каждую вкладку: .jpg/.png + .webp
+public/images/       # кадры дуэта Granta + Vesta под каждую вкладку: .jpg + .webp
 tests/               # модульные тесты (node --test) — см. «Проверки»
 scripts/             # supabase-auth-setup, prepare-images (WebP), test (сборка тестов),
                      # smoke-build / smoke-render (SSR всех экранов), smoke-demo
@@ -360,25 +360,26 @@ supabase/schema.sql  # таблицы + RLS
 
 | Файл | Где используется |
 |---|---|
-| `granta-sport-hero` | экран входа |
-| `granta-sport-road` | главная, ракурс «На трассе» |
-| `granta-sport-white` / `-black` | главная, ракурс «Гараж» (выбор исполнения кузова) |
-| `granta-sport-credit` | шапка вкладки «Кредит» (автосалон) |
-| `granta-sport-fuel` | шапка вкладки «Расходы» (АЗС) |
-| `granta-sport-service` | шапка вкладки «ТО» (подъёмник в сервисе) |
-| `granta-sport-garage` | шапка вкладки «Моя Гранта» |
-| `granta-sport-detail` | пустые состояния |
+| `lada-duo-hero` | экран входа: Granta и Vesta на мосту |
+| `lada-duo-road` | главная, ракурс «На трассе» |
+| `lada-duo-garage-granta` / `-vesta` | главная, ракурс «Гараж» (переключатель «ваша модель» — в фокусе Granta или Vesta, вторая машина сзади) |
+| `lada-duo-credit` | шапка вкладки «Кредит» (автосалон) |
+| `lada-duo-fuel` | шапка вкладки «Расходы» (АЗС) |
+| `lada-duo-service` | шапка вкладки «ТО» (Granta на подъёмнике, Vesta с открытым капотом) |
+| `lada-duo-garage` | шапка вкладки «Мой гараж» |
+| `lada-duo-detail` | пустые состояния: макро шильдиков GRANTA и VESTA |
+
+Каждый кадр снят с **двумя машинами** — кабинета «только для Гранты» больше нет,
+визуал подходит владельцам и Granta, и Vesta.
 
 Соответствие «вкладка → кадр» задаётся в `PAGE_MEDIA`
 ([`src/lib/assets.ts`](src/lib/assets.ts)); шапки рисует
 [`src/components/PageHero.tsx`](src/components/PageHero.tsx).
 
 Фотографии в `public/images/` — **сгенерированные иллюстрации, а не лицензионные
-фотографии реальной Granta Sport**. Вырезанные кузова (`granta-sport-black.png`,
-`granta-sport-white.png`) имеют настоящий альфа-канал — он добавляется скриптом
-`scripts/extract-alpha.mjs` (заливка от границы, а не порог по цвету, чтобы не
-съесть тёмный кузов). `npm run images` собирает из них WebP (~1.6 МБ → ~0.3 МБ),
-который `src/lib/assets.ts` подставляет вместо JPEG/PNG, если браузер его умеет.
+фотографии реальных автомобилей**: на каждом кадре вместе LADA Granta и LADA Vesta.
+`npm run images` собирает WebP-версии (~2.0 МБ → ~1.2 МБ), которые
+`src/lib/assets.ts` подставляет вместо JPEG, если браузер его умеет.
 Перед публикацией замените кадры на оригиналы с проверкой прав.
 
 ## Раздел «ТО»: откуда берутся данные

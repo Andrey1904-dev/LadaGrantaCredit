@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import type { GrantaAssetMeta } from '../lib/assets'
+import type { DuoAssetMeta } from '../lib/assets'
 
 interface PageHeroProps {
-  media: { asset: GrantaAssetMeta; caption: string }
+  media: { asset: DuoAssetMeta; caption: string }
   /** Надзаголовок — короткая метка раздела */
   eyebrow?: string
   title: string
@@ -18,7 +18,7 @@ interface PageHeroProps {
 }
 
 /**
- * Обложка раздела: у каждой вкладки свой кадр Granta Sport
+ * Обложка раздела: у каждой вкладки свой кадр дуэта Granta + Vesta
  * (см. PAGE_MEDIA в src/lib/assets.ts), чтобы экраны различались визуально.
  */
 export default function PageHero({

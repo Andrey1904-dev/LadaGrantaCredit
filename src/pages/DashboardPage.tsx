@@ -37,16 +37,16 @@ import {
 import { remainingBalance } from '../utils/loan'
 import { CATEGORY_META } from '../lib/categories'
 import {
-  GRANTA_ASSETS,
-  getSavedFinish,
-  type GrantaFinish,
+  LADA_DUO_ASSETS,
+  getSavedModel,
+  type DuoModel,
 } from '../lib/assets'
 import { useSettings } from '../lib/settings'
 import { buildServicePlan, STATE_META } from '../lib/service'
 import { computeFuelStats, monthlyMileage } from '../utils/fuel'
 import type { TxCategory } from '../types/domain'
 
-/** Вкладка 1: Главная (Личный кабинет владельца LADA Granta Sport) */
+/** Вкладка 1: Главная (Личный кабинет владельца LADA Granta и Vesta) */
 export default function DashboardPage() {
   const { car, loan, transactions, maintenance, loading, saveCar } = useAppData()
   const [settings] = useSettings()
@@ -54,13 +54,13 @@ export default function DashboardPage() {
   const [mileageOpen, setMileageOpen] = useState(false)
   const [newMileage, setNewMileage] = useState('')
   const [mileageError, setMileageError] = useState('')
-  const [finish, setFinish] = useState<GrantaFinish>(() => getSavedFinish())
+  const [model, setModel] = useState<DuoModel>(() => getSavedModel())
   const [photoMode, setPhotoMode] = useState<'garage' | 'road'>('garage')
 
   useEffect(() => {
-    const onFinish = () => setFinish(getSavedFinish())
-    window.addEventListener('lgc-finish-change', onFinish)
-    return () => window.removeEventListener('lgc-finish-change', onFinish)
+    const onModel = () => setModel(getSavedModel())
+    window.addEventListener('lgc-model-change', onModel)
+    return () => window.removeEventListener('lgc-model-change', onModel)
   }, [])
 
   const monthSpent = useMemo(() => {
@@ -165,8 +165,9 @@ export default function DashboardPage() {
     { category: 'other', label: 'Прочее', sub: 'Мойка, парковка', Icon: DotsIcon },
   ]
 
-  const garageAsset = finish === 'white' ? GRANTA_ASSETS.garageWhite : GRANTA_ASSETS.garageBlack
-  const sceneAsset = photoMode === 'garage' ? garageAsset : GRANTA_ASSETS.road
+  const garageAsset =
+    model === 'vesta' ? LADA_DUO_ASSETS.garageVesta : LADA_DUO_ASSETS.garageGranta
+  const sceneAsset = photoMode === 'garage' ? garageAsset : LADA_DUO_ASSETS.road
   const sceneCaption = photoMode === 'garage' ? 'Гараж · домашний бокс' : 'Трасса · утро'
 
   return (
@@ -182,7 +183,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#E33337]" aria-hidden="true" />
             <span className="font-display-num text-[13px] font-bold uppercase tracking-wider text-[#F3F4F4]">
-              Моя LADA Granta Sport
+              Моя LADA · Granta &amp; Vesta
             </span>
             {insuranceAlert && (
               <Link
@@ -199,7 +200,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Переключатель сцены: домашний гараж (чёрный/белый кузов) или трасса */}
+          {/* Переключатель сцены: домашний гараж (ваша модель в фокусе) или трасса */}
           <div className="flex items-center gap-1 rounded-[8px] border border-[#363B43] bg-[#0E1013] p-0.5 text-[11px] font-semibold">
             <button
               type="button"
@@ -226,11 +227,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Полноформатная сцена автомобиля на всю ширину карточки: машина целиком,
-            без белых полей и «игрушечного» подиума; кроссфейд при смене сцены/цвета */}
+        {/* Полноформатная сцена дуэта на всю ширину карточки: обе машины целиком,
+            без белых полей и «игрушечного» подиума; кроссфейд при смене сцены/модели */}
         <div className="relative h-56 w-full overflow-hidden bg-[#0E1013] sm:h-80">
           <img
-            key={`${photoMode}-${finish}`}
+            key={`${photoMode}-${model}`}
             src={sceneAsset.src}
             data-webp-src={sceneAsset.webp}
             alt={sceneAsset.alt}
@@ -689,9 +690,9 @@ function OnboardingCar() {
     <Card className="p-0 overflow-hidden">
       <div className="relative aspect-[16/9] max-h-64 w-full overflow-hidden bg-[#0E1013]">
         <img
-          src={GRANTA_ASSETS.garageBlack.src}
-          data-webp-src={GRANTA_ASSETS.garageBlack.webp}
-          alt={GRANTA_ASSETS.garageBlack.alt}
+          src={LADA_DUO_ASSETS.garageGranta.src}
+          data-webp-src={LADA_DUO_ASSETS.garageGranta.webp}
+          alt={LADA_DUO_ASSETS.garageGranta.alt}
           className="animate-car-in h-full w-full object-cover object-center"
         />
         <div
@@ -703,7 +704,7 @@ function OnboardingCar() {
         <div className="flex items-center gap-2">
           <CarIcon className="h-5 w-5 text-[#E33337]" />
           <h2 className="font-display-num text-[20px] font-bold uppercase tracking-wide text-[#F3F4F4]">
-            Добавьте вашу LADA Granta
+            Добавьте вашу LADA Granta или Vesta
           </h2>
         </div>
         <p className="mt-1 text-[13px] leading-relaxed text-[#A9AFB7]">

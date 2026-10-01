@@ -76,7 +76,7 @@ export default function MySchedule() {
     return (
       <>
         <EmptyState
-          showSportDetail
+          showDuoDetail
           icon={<CardIcon className="h-6 w-6" />}
           title="Кредит не подключён"
           text="Укажите параметры автокредита — приложение построит график и будет считать остаток долга по вашим платежам"
