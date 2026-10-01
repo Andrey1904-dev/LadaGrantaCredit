@@ -37,16 +37,17 @@ import {
 import { remainingBalance } from '../utils/loan'
 import { CATEGORY_META } from '../lib/categories'
 import {
-  GRANTA_ASSETS,
-  getSavedFinish,
-  type GrantaFinish,
+  LADA_DUO_ASSETS,
+  getSavedModel,
+  type DuoModel,
 } from '../lib/assets'
 import { useSettings } from '../lib/settings'
+import { useCountUp } from '../lib/useCountUp'
 import { buildServicePlan, STATE_META } from '../lib/service'
 import { computeFuelStats, monthlyMileage } from '../utils/fuel'
 import type { TxCategory } from '../types/domain'
 
-/** Вкладка 1: Главная (Личный кабинет владельца LADA Granta Sport) */
+/** Вкладка 1: Главная (Личный кабинет владельца LADA Granta и Vesta) */
 export default function DashboardPage() {
   const { car, loan, transactions, maintenance, loading, saveCar } = useAppData()
   const [settings] = useSettings()
@@ -54,13 +55,13 @@ export default function DashboardPage() {
   const [mileageOpen, setMileageOpen] = useState(false)
   const [newMileage, setNewMileage] = useState('')
   const [mileageError, setMileageError] = useState('')
-  const [finish, setFinish] = useState<GrantaFinish>(() => getSavedFinish())
+  const [model, setModel] = useState<DuoModel>(() => getSavedModel())
   const [photoMode, setPhotoMode] = useState<'garage' | 'road'>('garage')
 
   useEffect(() => {
-    const onFinish = () => setFinish(getSavedFinish())
-    window.addEventListener('lgc-finish-change', onFinish)
-    return () => window.removeEventListener('lgc-finish-change', onFinish)
+    const onModel = () => setModel(getSavedModel())
+    window.addEventListener('lgc-model-change', onModel)
+    return () => window.removeEventListener('lgc-model-change', onModel)
   }, [])
 
   const monthSpent = useMemo(() => {
@@ -117,6 +118,10 @@ export default function DashboardPage() {
   )
   const kmPerMonth = useMemo(() => monthlyMileage(transactions), [transactions])
 
+  /* Живые цифры: одометр и траты месяца «докручиваются» при появлении */
+  const shownMileage = useCountUp(car?.current_mileage ?? 0)
+  const shownMonthSpent = useCountUp(monthSpent)
+
   const insuranceAlert = useMemo(() => {
     if (!car?.insurance_until) return null
     const d = daysUntil(car.insurance_until)
@@ -165,8 +170,9 @@ export default function DashboardPage() {
     { category: 'other', label: 'Прочее', sub: 'Мойка, парковка', Icon: DotsIcon },
   ]
 
-  const garageAsset = finish === 'white' ? GRANTA_ASSETS.garageWhite : GRANTA_ASSETS.garageBlack
-  const sceneAsset = photoMode === 'garage' ? garageAsset : GRANTA_ASSETS.road
+  const garageAsset =
+    model === 'vesta' ? LADA_DUO_ASSETS.garageVesta : LADA_DUO_ASSETS.garageGranta
+  const sceneAsset = photoMode === 'garage' ? garageAsset : LADA_DUO_ASSETS.road
   const sceneCaption = photoMode === 'garage' ? 'Гараж · домашний бокс' : 'Трасса · утро'
 
   return (
@@ -182,7 +188,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#E33337]" aria-hidden="true" />
             <span className="font-display-num text-[13px] font-bold uppercase tracking-wider text-[#F3F4F4]">
-              Моя LADA Granta Sport
+              Моя LADA · Granta &amp; Vesta
             </span>
             {insuranceAlert && (
               <Link
@@ -199,7 +205,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Переключатель сцены: домашний гараж (чёрный/белый кузов) или трасса */}
+          {/* Переключатель сцены: домашний гараж (ваша модель в фокусе) или трасса */}
           <div className="flex items-center gap-1 rounded-[8px] border border-[#363B43] bg-[#0E1013] p-0.5 text-[11px] font-semibold">
             <button
               type="button"
@@ -226,17 +232,23 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Полноформатная сцена автомобиля на всю ширину карточки: машина целиком,
-            без белых полей и «игрушечного» подиума; кроссфейд при смене сцены/цвета */}
+        {/* Полноформатная сцена дуэта на всю ширину карточки: обе машины целиком,
+            без белых полей и «игрушечного» подиума; кроссфейд при смене сцены/модели */}
         <div className="relative h-56 w-full overflow-hidden bg-[#0E1013] sm:h-80">
-          <img
-            key={`${photoMode}-${finish}`}
-            src={sceneAsset.src}
-            data-webp-src={sceneAsset.webp}
-            alt={sceneAsset.alt}
-            fetchPriority="high"
-            decoding="async"
-            className="animate-car-in h-full w-full object-cover object-center"
+          <div key={`${photoMode}-${model}`} className="animate-car-in h-full w-full">
+            <img
+              src={sceneAsset.src}
+              data-webp-src={sceneAsset.webp}
+              alt={sceneAsset.alt}
+              fetchPriority="high"
+              decoding="async"
+              className="animate-kenburns h-full w-full object-cover object-center"
+            />
+          </div>
+          {/* Бегущий блик — фирменный штрих спортивной линейки */}
+          <div
+            aria-hidden="true"
+            className="animate-sheen pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/5 to-transparent"
           />
           {/* Мягкое затемнение снизу, чтобы сцена вливалась в карточку */}
           <div
@@ -265,7 +277,7 @@ export default function DashboardPage() {
                 Показания одометра
               </p>
               <p className="font-display-num text-[28px] font-bold leading-tight text-[#F3F4F4]">
-                {fmtMileage(car.current_mileage)}
+                {fmtMileage(Math.round(shownMileage))}
               </p>
             </div>
           </div>
@@ -300,7 +312,7 @@ export default function DashboardPage() {
         className="animate-rise grid grid-cols-1 gap-2.5 sm:grid-cols-3"
         style={{ animationDelay: '130ms' }}
       >
-        <Link to="/service" className="group">
+        <Link to="/service" className="group hover-lift rounded-[10px]">
           <Card className="flex h-full flex-col justify-between border-[#363B43] transition-colors group-hover:border-[#E33337]/70">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -334,7 +346,7 @@ export default function DashboardPage() {
             {nextService && (
               <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#0E1013]">
                 <div
-                  className="h-full rounded-full"
+                  className="animate-bar h-full rounded-full"
                   style={{
                     width: `${Math.min(100, Math.max(3, nextService.progress * 100))}%`,
                     backgroundColor: STATE_META[nextService.state].color,
@@ -345,7 +357,7 @@ export default function DashboardPage() {
           </Card>
         </Link>
 
-        <Link to="/expenses" className="group">
+        <Link to="/expenses" className="group hover-lift rounded-[10px]">
           <Card className="flex h-full flex-col justify-between border-[#363B43] transition-colors group-hover:border-[#E33337]/70">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -478,7 +490,7 @@ export default function DashboardPage() {
           </SectionTitle>
 
           {loan && loanStats ? (
-            <Link to="/credit" className="group flex-1">
+            <Link to="/credit" className="group hover-lift flex-1 rounded-[10px]">
               <Card className="relative flex h-full flex-col justify-between overflow-hidden border-[#363B43] bg-gradient-to-br from-[#23272D] to-[#1A1D22] transition-colors group-hover:border-[#E33337]/70">
                 <span
                   className="absolute inset-y-0 left-0 w-1 bg-[#E33337]"
@@ -511,7 +523,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#0E1013]">
                     <div
-                      className="h-full rounded-full bg-[#E33337]"
+                      className="animate-bar h-full rounded-full bg-[#E33337]"
                       style={{
                         width: `${Math.min(100, Math.max(3, loanStats.progress * 100))}%`,
                       }}
@@ -558,7 +570,7 @@ export default function DashboardPage() {
                     Потрачено с начала месяца
                   </p>
                   <p className="font-display-num mt-1 text-[30px] font-bold leading-none text-[#F3F4F4]">
-                    {fmtMoney(monthSpent)}
+                    {fmtMoney(shownMonthSpent)}
                   </p>
                 </div>
                 <Link to="/expenses">
@@ -689,9 +701,9 @@ function OnboardingCar() {
     <Card className="p-0 overflow-hidden">
       <div className="relative aspect-[16/9] max-h-64 w-full overflow-hidden bg-[#0E1013]">
         <img
-          src={GRANTA_ASSETS.garageBlack.src}
-          data-webp-src={GRANTA_ASSETS.garageBlack.webp}
-          alt={GRANTA_ASSETS.garageBlack.alt}
+          src={LADA_DUO_ASSETS.garageGranta.src}
+          data-webp-src={LADA_DUO_ASSETS.garageGranta.webp}
+          alt={LADA_DUO_ASSETS.garageGranta.alt}
           className="animate-car-in h-full w-full object-cover object-center"
         />
         <div
@@ -703,7 +715,7 @@ function OnboardingCar() {
         <div className="flex items-center gap-2">
           <CarIcon className="h-5 w-5 text-[#E33337]" />
           <h2 className="font-display-num text-[20px] font-bold uppercase tracking-wide text-[#F3F4F4]">
-            Добавьте вашу LADA Granta
+            Добавьте вашу LADA Granta или Vesta
           </h2>
         </div>
         <p className="mt-1 text-[13px] leading-relaxed text-[#A9AFB7]">

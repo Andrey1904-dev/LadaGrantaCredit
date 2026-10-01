@@ -68,7 +68,7 @@ export const HELP_TEXT = [
 ].join('\n')
 
 export const BOT_DESCRIPTION =
-  'Персональный помощник владельца LADA Granta Sport. Сводки об автомобиле, ТО, расходах и автокредите — из вашего личного кабинета. Безопасное подключение по одноразовому коду.'
+  'Персональный помощник владельца LADA Granta и Vesta. Сводки об автомобиле, ТО, расходах и автокредите — из вашего личного кабинета. Безопасное подключение по одноразовому коду.'
 export const BOT_SHORT_DESCRIPTION = 'Цифровой гараж LADA: автомобиль, ТО, расходы и кредит.'
 export const BOT_COMMANDS = [
   { command: 'start', description: 'Главное меню' },
@@ -490,7 +490,7 @@ export function createBot({
 
   function menuScreen(linked) {
     const lines = [
-      '<b>🏁 LADA ASSISTANT</b>  <i>· цифровой гараж Granta Sport</i>',
+      '<b>🏁 LADA ASSISTANT</b>  <i>· цифровой гараж Granta и Vesta</i>',
       RULE,
       '',
     ]
@@ -548,7 +548,7 @@ export function createBot({
     const [insurance, insuranceHint] = insuranceStatusLine(data.car.insurance_until, new Date(now()))
     const lines = [
       ...screenTitle('🚘', 'Мой гараж'),
-      '<b>LADA Granta Sport</b>',
+      '<b>LADA Granta / Vesta</b>',
       statLine('🏁', 'Пробег', formatMileage(data.car.current_mileage)),
       insurance,
     ]
@@ -681,7 +681,7 @@ export function createBot({
     const intro = userId
       ? [
           `<b>🏁 С возвращением${name}.</b>`,
-          '<i>Цифровой гараж LADA Granta Sport — на связи.</i>',
+          '<i>Цифровой гараж LADA Granta и Vesta — на связи.</i>',
           RULE,
           '',
           '🚘 <b>Гараж</b> — пробег и статус ОСАГО',
@@ -693,7 +693,7 @@ export function createBot({
         ]
       : [
           `<b>🏁 Добро пожаловать${name}.</b>`,
-          '<i>LADA Assistant — персональный помощник владельца Granta Sport.</i>',
+          '<i>LADA Assistant — персональный помощник владельца Granta и Vesta.</i>',
           RULE,
           '',
           'Пробег и ОСАГО, история обслуживания, расходы и остаток автокредита —',

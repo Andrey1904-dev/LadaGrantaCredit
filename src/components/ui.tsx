@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
 } from 'react'
-import { GRANTA_ASSETS } from '../lib/assets'
+import { LADA_DUO_ASSETS } from '../lib/assets'
 
 /** Базовые UI-примитивы дизайн-системы LADA Granta Sport */
 
@@ -204,22 +204,22 @@ export function EmptyState({
   title,
   text,
   action,
-  showSportDetail = false,
+  showDuoDetail = false,
 }: {
   icon: ReactNode
   title: string
   text?: string
   action?: ReactNode
-  /** Показывать ли сверху спокойный кадр шильдика SPORT без наложения текста поверх него */
-  showSportDetail?: boolean
+  /** Показывать ли сверху спокойный кадр шильдиков GRANTA | VESTA без наложения текста поверх него */
+  showDuoDetail?: boolean
 }) {
   return (
     <div className="overflow-hidden rounded-[10px] border border-[#363B43] bg-[#1A1D22]">
-      {showSportDetail && (
+      {showDuoDetail && (
         <div className="relative h-28 w-full overflow-hidden border-b border-[#363B43]/70 bg-[#0E1013]">
           <img
-            src={GRANTA_ASSETS.detail.src}
-            data-webp-src={GRANTA_ASSETS.detail.webp}
+            src={LADA_DUO_ASSETS.detail.src}
+            data-webp-src={LADA_DUO_ASSETS.detail.webp}
             alt=""
             loading="lazy"
             className="h-full w-full object-cover object-center opacity-80"

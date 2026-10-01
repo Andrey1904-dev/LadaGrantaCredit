@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Button, Card, Field, InfoTip } from '../ui'
 import { useAppData } from '../../context/AppDataContext'
-import { fmtMoney, parseLocaleNumber } from '../../utils/format'
+import { fmtMoney, parseLocaleNumber, toDateInputValue } from '../../utils/format'
+import { CheckIcon } from '../icons'
 import {
   annuityPayment,
   principalFromPayment,
@@ -32,7 +33,7 @@ export default function Modeling() {
 /* ------------------------- Калькулятор подбора 4-го поля ------------------------- */
 
 function SolverCalculator() {
-  const { loan } = useAppData()
+  const { loan, saveLoan } = useAppData()
   const [values, setValues] = useState<Record<CalcField, string>>({
     amount: '',
     rate: '',
@@ -43,6 +44,8 @@ function SolverCalculator() {
   const [given, setGiven] = useState<CalcField[]>([])
   const [computed, setComputed] = useState<CalcField | null>(null)
   const [error, setError] = useState('')
+  const [savingLoan, setSavingLoan] = useState(false)
+  const [savedLoan, setSavedLoan] = useState(false)
 
   /** Вычисляет недостающее поле из трёх заданных */
   const solve = (
@@ -147,6 +150,33 @@ function SolverCalculator() {
     const overpay = Math.max(0, totalPaid - S)
     return { totalPaid, overpay }
   }, [values])
+
+  /** Подбор можно сохранить как свой кредит — раньше здесь кнопки не было */
+  const loanDraft = useMemo(() => {
+    const S = parseLocaleNumber(values.amount)
+    const R = parseLocaleNumber(values.rate)
+    const P = parseLocaleNumber(values.payment)
+    const N = Math.round(parseLocaleNumber(values.term))
+    if (!(S > 0) || !Number.isFinite(R) || !(R >= 0) || !(P > 0) || !(N > 0)) return null
+    return { total_amount: S, interest_rate: R, monthly_payment: P, term_months: N }
+  }, [values])
+
+  const saveAsMyLoan = async () => {
+    if (!loanDraft) return
+    setSavingLoan(true)
+    setSavedLoan(false)
+    try {
+      await saveLoan({
+        ...loanDraft,
+        start_date: loan?.start_date ?? toDateInputValue(new Date()),
+      })
+      setSavedLoan(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось сохранить кредит')
+    } finally {
+      setSavingLoan(false)
+    }
+  }
 
   const labels: Record<
     CalcField,
@@ -260,6 +290,29 @@ function SolverCalculator() {
                 +{fmtMoney(summary.overpay)}
               </p>
             </div>
+          </div>
+        )}
+
+        {loanDraft && (
+          <div className="mt-4 flex flex-col gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => void saveAsMyLoan()}
+              disabled={savingLoan}
+              className="w-full"
+            >
+              <CheckIcon className="h-4 w-4 text-[#E33337]" />
+              {savingLoan
+                ? 'Сохраняем…'
+                : loan
+                  ? 'Обновить мой кредит этими параметрами'
+                  : 'Сохранить как мой кредит'}
+            </Button>
+            {savedLoan && (
+              <p className="animate-pop-in rounded-[8px] border border-[#16B374]/45 bg-[#16B374]/12 px-3 py-2 text-[12px] font-semibold text-[#16B374]">
+                Кредит сохранён — график, остаток и платежи теперь на вкладке «Мой график».
+              </p>
+            )}
           </div>
         )}
       </div>

@@ -26,6 +26,7 @@ import { TCO_BENCHMARK, forecastYear, monthlySeries, ownershipCost } from '../ut
 import { buildServicePlan, engineInfo } from '../lib/service'
 import { taxRateFor, transportTax } from '../lib/tax'
 import { confirmAction } from '../lib/telegram-mini-app'
+import { useCountUp } from '../lib/useCountUp'
 
 /** Вкладка 3: Расходы — аналитика стоимости владения, Donut-диаграмма и лента операций */
 export default function ExpensesPage() {
@@ -121,6 +122,9 @@ export default function ExpensesPage() {
     return transactions.filter((t) => t.category === filterCat)
   }, [transactions, filterCat])
 
+  /* Итог за период «докручивается» при появлении */
+  const shownTotal = useCountUp(stats.total)
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -174,7 +178,7 @@ export default function ExpensesPage() {
 
       {transactions.length === 0 ? (
         <EmptyState
-          showSportDetail
+          showDuoDetail
           icon={<WalletIcon className="h-6 w-6" />}
           title="Пока нет записанных расходов"
           text="Добавьте первую трату — заправку топливом (с пробегом), платёж по кредиту, страховку или ТО"
@@ -193,7 +197,7 @@ export default function ExpensesPage() {
         <>
           {/* Сводные показатели стоимости владения */}
           <div className="grid grid-cols-3 gap-2.5">
-            <StatCard label="Всего за период" value={fmtMoney(stats.total)} />
+            <StatCard label="Всего за период" value={fmtMoney(shownTotal)} />
             <StatCard label="Этот месяц" value={fmtMoney(stats.month)} />
             <StatCard
               label="Стоимость 1 км"
@@ -622,7 +626,7 @@ function ForecastRow({
       <span className="min-w-0 flex-1 truncate text-[12.5px] text-[#A9AFB7]">{label}</span>
       <span className="h-1.5 w-16 overflow-hidden rounded-full bg-[#23272D] sm:w-24">
         <span
-          className="block h-full rounded-full"
+          className="animate-bar block h-full rounded-full"
           style={{ width: `${share}%`, backgroundColor: color }}
         />
       </span>

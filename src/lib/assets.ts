@@ -1,28 +1,34 @@
 /**
- * Каталог фотографий LADA Granta Sport.
+ * Каталог фотографий дуэта LADA Granta + LADA Vesta.
  *
- * Исходные кадры владельца (`hero`, `detail`, `black`, `white`) дополнены
- * серией кадров, снятых «в тон» этим референсам, — по одному на раздел
- * приложения, чтобы вкладки визуально не повторялись:
+ * Кабинет больше не «только Гранта»: каждый кадр снят с ДВУМЯ машинами —
+ * Granta и Vesta всегда в кадре вместе, чтобы визуал подходил владельцам
+ * обеих моделей. По одному кадру на раздел приложения, чтобы вкладки
+ * визуально не повторялись:
  *
- *   Главная  → трасса на рассвете      (granta-sport-road)
- *   Кредит   → автосалон ночью         (granta-sport-credit)
- *   Расходы  → АЗС в сумерках          (granta-sport-fuel)
- *   ТО       → подъёмник в сервисе     (granta-sport-service)
- *   Гараж    → частный гараж           (granta-sport-garage)
+ *   Вход     → две машины на мосту на закате   (lada-duo-hero)
+ *   Главная  → дуэт на трассе на рассвете      (lada-duo-road)
+ *   Кредит   → дуэт у автосалона ночью         (lada-duo-credit)
+ *   Расходы  → дуэт на АЗС в сумерках          (lada-duo-fuel)
+ *   ТО       → дуэт в сервисе, одна на подъёмнике (lada-duo-service)
+ *   Гараж    → дуэт в частном гараже           (lada-duo-garage)
  *
- * Полноформатные кадры «машина в гараже» на всю ширину карточки —
- * чёрное и белое исполнение (granta-sport-garage-black / -white)
- * заменили ранние студийные вырезки (black/white), которые выглядели
- * маленькой машинкой на подиуме.
+ * Деталь — макро двух шильдиков «GRANTA | VESTA» (lada-duo-detail) —
+ * используется в пустых состояниях и карточках-ссылках.
+ *
+ * Полноформатные кадры «домашний гараж с красной LED-подсветкой» —
+ * lada-duo-garage-granta (Granta в фокусе, Vesta сзади) и
+ * lada-duo-garage-vesta (Vesta в фокусе, Granta сзади): обе машины
+ * всегда в кадре, переключатель лишь выбирает, какая из них ваша.
  *
  * У каждого кадра есть WebP-версия (`npm run images`), которая
  * подставляется автоматически через `data-webp-src`.
  */
 
-export type GrantaFinish = 'black' | 'white'
+/** Какая из двух машин — «ваша»: влияет на фокус в гаражных кадрах */
+export type DuoModel = 'granta' | 'vesta'
 
-export interface GrantaAssetMeta {
+export interface DuoAssetMeta {
   /** Путь к WebP-версии (подставляется, если браузер её поддерживает) */
   webp: string
   /** Фактический путь файла в репозитории */
@@ -31,102 +37,94 @@ export interface GrantaAssetMeta {
   alt: string
 }
 
-const asset = (name: string, ext: 'jpg' | 'png', alt: string): GrantaAssetMeta => ({
+const asset = (name: string, alt: string): DuoAssetMeta => ({
   webp: `./images/${name}.webp`,
-  src: `./images/${name}.${ext}`,
+  src: `./images/${name}.jpg`,
   alt,
 })
 
-export const GRANTA_ASSETS = {
-  /** Серая Granta Sport на мосту, ракурс 3/4 (референс владельца) */
-  hero: asset('granta-sport-hero', 'jpg', 'Серая LADA Granta Sport на мосту, ракурс 3/4 спереди'),
-  /** Крупный план шильдика SPORT на тёмной решётке радиатора */
+export const LADA_DUO_ASSETS = {
+  /** Вход: Granta и Vesta рядом на мосту, закат (референс старого hero-кадра) */
+  hero: asset(
+    'lada-duo-hero',
+    'LADA Granta и LADA Vesta рядом на мосту на закате, ракурс 3/4 спереди',
+  ),
+  /** Макро двух шильдиков «GRANTA | VESTA» на тёмной крышке багажника */
   detail: asset(
-    'granta-sport-detail',
-    'jpg',
-    'Крупный план шильдика SPORT на чёрной решётке радиатора LADA Granta Sport',
+    'lada-duo-detail',
+    'Крупный план хромированных шильдиков GRANTA и VESTA на тёмной крышке багажника',
   ),
-  /** Белая Granta Sport (выбор исполнения кузова) */
-  white: asset('granta-sport-white', 'png', 'Белая LADA Granta Sport в студийном ракурсе 3/4'),
-  /** Чёрная Granta Sport (выбор исполнения кузова) */
-  black: asset('granta-sport-black', 'png', 'Чёрная LADA Granta Sport в студийном ракурсе 3/4'),
-  /** Главная: трасса на рассвете */
+  /** Главная: дуэт на городской трассе на рассвете */
   road: asset(
-    'granta-sport-road',
-    'jpg',
-    'LADA Granta Sport на городской трассе на рассвете, вид 3/4 спереди',
+    'lada-duo-road',
+    'LADA Granta и LADA Vesta идут tandem по городской трассе на рассвете',
   ),
-  /** Кредит: автосалон ночью */
+  /** Кредит: дуэт у стеклянного автосалона ночью */
   credit: asset(
-    'granta-sport-credit',
-    'jpg',
-    'LADA Granta Sport у стеклянного автосалона ночью, мокрый асфальт',
+    'lada-duo-credit',
+    'LADA Granta и LADA Vesta у стеклянного автосалона ночью, мокрый асфальт',
   ),
-  /** Расходы: заправка в сумерках */
+  /** Расходы: дуэт на заправке в сумерках */
   fuel: asset(
-    'granta-sport-fuel',
-    'jpg',
-    'LADA Granta Sport на заправке в сумерках, пистолет в горловине бака',
+    'lada-duo-fuel',
+    'LADA Granta и LADA Vesta на соседних колонках АЗС в сумерках, пистолет в горловине бака',
   ),
-  /** ТО: автомобиль на подъёмнике в сервисе */
+  /** ТО: Granta на подъёмнике, Vesta с открытым капотом */
   service: asset(
-    'granta-sport-service',
-    'jpg',
-    'LADA Granta Sport на двухстоечном подъёмнике в сервисной зоне с открытым капотом',
+    'lada-duo-service',
+    'LADA Granta на двухстоечном подъёмнике и LADA Vesta с открытым капотом в сервисной зоне',
   ),
-  /** Гараж: частный бокс с тёплым светом */
+  /** Гараж: частный бокс с тёплым светом, обе машины */
   garage: asset(
-    'granta-sport-garage',
-    'jpg',
-    'LADA Granta Sport в частном гараже под тёплой лампой, рядом комплект шин',
+    'lada-duo-garage',
+    'LADA Granta и LADA Vesta в частном гараже под тёплой лампой, рядом комплект шин',
   ),
-  /** Главная + Гараж: чёрная Granta Sport в гараже, полный кадр на всю ширину */
-  garageBlack: asset(
-    'granta-sport-garage-black',
-    'jpg',
-    'Чёрная LADA Granta Sport в тёмном гараже с красной LED-подсветкой, ракурс 3/4 спереди',
+  /** Гараж с LED-подсветкой: чёрная Granta в фокусе, белая Vesta сзади */
+  garageGranta: asset(
+    'lada-duo-garage-granta',
+    'Чёрная LADA Granta в фокусе и белая LADA Vesta сзади в тёмном гараже с красной LED-подсветкой',
   ),
-  /** Главная + Гараж: белая Granta Sport в гараже, полный кадр на всю ширину */
-  garageWhite: asset(
-    'granta-sport-garage-white',
-    'jpg',
-    'Белая LADA Granta Sport в тёмном гараже с красной LED-подсветкой, ракурс 3/4 спереди',
+  /** Гараж с LED-подсветкой: белая Vesta в фокусе, чёрная Granta сзади */
+  garageVesta: asset(
+    'lada-duo-garage-vesta',
+    'Белая LADA Vesta в фокусе и чёрная LADA Granta сзади в тёмном гараже с красной LED-подсветкой',
   ),
 } as const
 
-export type GrantaAssetKey = keyof typeof GRANTA_ASSETS
+export type DuoAssetKey = keyof typeof LADA_DUO_ASSETS
 
 /** Кадр-обложка и подпись для каждой вкладки приложения */
 export const PAGE_MEDIA = {
-  dashboard: { asset: GRANTA_ASSETS.road, caption: 'Трасса · утро' },
-  credit: { asset: GRANTA_ASSETS.credit, caption: 'Автосалон · ночь' },
-  expenses: { asset: GRANTA_ASSETS.fuel, caption: 'АЗС · сумерки' },
-  service: { asset: GRANTA_ASSETS.service, caption: 'Сервис · подъёмник' },
-  garage: { asset: GRANTA_ASSETS.garage, caption: 'Гараж · бокс' },
-  auth: { asset: GRANTA_ASSETS.hero, caption: 'Мост · закат' },
+  dashboard: { asset: LADA_DUO_ASSETS.road, caption: 'Трасса · утро' },
+  credit: { asset: LADA_DUO_ASSETS.credit, caption: 'Автосалон · ночь' },
+  expenses: { asset: LADA_DUO_ASSETS.fuel, caption: 'АЗС · сумерки' },
+  service: { asset: LADA_DUO_ASSETS.service, caption: 'Сервис · подъёмник' },
+  garage: { asset: LADA_DUO_ASSETS.garage, caption: 'Гараж · бокс' },
+  auth: { asset: LADA_DUO_ASSETS.hero, caption: 'Мост · закат' },
 } as const
 
-const FINISH_STORAGE_KEY = 'lgc_granta_finish'
+const MODEL_STORAGE_KEY = 'lgc_duo_model'
 
-export function getSavedFinish(): GrantaFinish {
+/** Сохранённая модель владельца; по умолчанию показываем Granta в фокусе */
+export function getSavedModel(): DuoModel {
   try {
-    const v = localStorage.getItem(FINISH_STORAGE_KEY)
-    return v === 'white' ? 'white' : 'black'
+    const v = localStorage.getItem(MODEL_STORAGE_KEY)
+    return v === 'vesta' ? 'vesta' : 'granta'
   } catch {
-    return 'black'
+    return 'granta'
   }
 }
 
-export function setSavedFinish(finish: GrantaFinish): void {
+export function setSavedModel(model: DuoModel): void {
   try {
-    localStorage.setItem(FINISH_STORAGE_KEY, finish)
-    window.dispatchEvent(new CustomEvent('lgc-finish-change', { detail: finish }))
+    localStorage.setItem(MODEL_STORAGE_KEY, model)
+    window.dispatchEvent(new CustomEvent('lgc-model-change', { detail: model }))
   } catch {
     /* ignore storage errors */
   }
 }
 
-/** Умеет ли браузер показывать WebP — иначе оставляем JPEG/PNG из `src`. */
+/** Умеет ли браузер показывать WebP — иначе оставляем JPEG из `src`. */
 function supportsWebp(): boolean {
   try {
     const canvas = document.createElement('canvas')
@@ -145,7 +143,7 @@ function upgradeToWebp(img: HTMLImageElement): void {
 }
 
 /**
- * Подставляет WebP-версии картинок Granta вместо JPEG/PNG.
+ * Подставляет WebP-версии картинок дуэта вместо JPEG.
  *
  * В разметке у каждого кадра объявлен `data-webp-src`; файлы `.webp`
  * генерируются скриптом `npm run images` (см. scripts/prepare-images.mjs).

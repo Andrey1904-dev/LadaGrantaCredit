@@ -7,7 +7,7 @@ import { AlertIcon, LogoutIcon, RefreshIcon } from './icons'
 import { confirmAction } from '../lib/telegram-mini-app'
 
 /**
- * Основной каркас личного кабинета владельца LADA Granta Sport.
+ * Основной каркас личного кабинета владельца LADA Granta и Vesta.
  * Mobile-first (360–390px), адаптируется к планшету (768px) и десктопу (1440px).
  */
 export default function Layout() {
@@ -37,7 +37,7 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <img
               src="./logo.png"
-              alt="Эмблема кабинета LADA Granta Sport"
+              alt="Эмблема кабинета LADA Granta и Vesta"
               title="«Можно, а зачем?» — а мы уже сделали"
               className="h-9 w-9 shrink-0 rounded-[8px] border border-[#363B43]"
             />
@@ -47,7 +47,7 @@ export default function Layout() {
                   LADA Кредит &amp; Гараж
                 </p>
                 <span className="rounded-[5px] border border-[#E33337]/50 bg-[#E33337]/15 px-1.5 py-0.5 font-display-num text-[10px] font-bold uppercase tracking-widest text-[#E33337]">
-                  SPORT
+                  Granta · Vesta
                 </span>
               </div>
               <div className="mt-0.5 flex items-center gap-2 text-[11.5px] text-[#A9AFB7]">
@@ -142,7 +142,7 @@ export default function Layout() {
         </div>
 
         <footer className="mt-10 border-t border-[#363B43]/50 pt-4 text-center text-[11px] leading-relaxed text-[#A9AFB7]/75">
-          Личный кабинет владельца автомобиля (концепт в эстетике LADA Granta Sport). Не является официальным сервисом АО «АВТОВАЗ».
+          Личный кабинет владельца автомобиля (концепт в эстетике LADA Granta и Vesta). Не является официальным сервисом АО «АВТОВАЗ».
         </footer>
       </main>
 

@@ -3,10 +3,10 @@ import { mailCooldownLeft, useAuth } from '../context/AuthContext'
 import { Button, Field, SegmentedControl } from '../components/ui'
 import { checkEmail, webmailUrl } from '../lib/email'
 import { AuthProblem, toAuthProblem } from '../lib/authErrors'
-import { GRANTA_ASSETS } from '../lib/assets'
+import { LADA_DUO_ASSETS } from '../lib/assets'
 import { AlertIcon, ArrowUpRightIcon, CarIcon, CheckIcon, InfoIcon } from '../components/icons'
 
-/** Экран 0: Авторизация и вход в личный кабинет владельца LADA Granta Sport */
+/** Экран 0: Авторизация и вход в личный кабинет владельца LADA Granta и Vesta */
 export default function AuthPage() {
   const { signIn, signUp, enterDemo, leaveDemo, resendConfirmation, demoOnly, mode, settings } =
     useAuth()
@@ -138,15 +138,15 @@ export default function AuthPage() {
   return (
     <div className="animate-page-enter min-h-dvh w-full bg-[#0E1013] text-[#F3F4F4]">
       <div className="mx-auto grid min-h-dvh max-w-[1040px] grid-cols-1 lg:grid-cols-12 lg:items-center lg:gap-8 lg:px-6 lg:py-8">
-        {/* Левая / верхняя колонка: Hero-кадр серой Granta Sport на мосту + макро-деталь шильдика SPORT */}
+        {/* Левая / верхняя колонка: Hero-кадр дуэта Granta + Vesta на мосту + макро шильдиков GRANTA | VESTA */}
         <div className="lg:col-span-7">
           <div className="relative overflow-hidden bg-[#1A1D22] lg:rounded-[12px] lg:border lg:border-[#363B43]">
-            {/* Кадр 1: Серая Granta Sport на мосту, ракурс 3/4. Автомобиль целиком в кадре, передний бампер и колёса не обрезаются */}
+            {/* Кадр 1: Granta и Vesta на мосту, ракурс 3/4. Обе машины целиком в кадре, бамперы и колёса не обрезаются */}
             <div className="relative aspect-[16/10] w-full bg-[#0E1013] sm:aspect-[16/9]">
               <img
-                src={GRANTA_ASSETS.hero.src}
-                data-webp-src={GRANTA_ASSETS.hero.webp}
-                alt={GRANTA_ASSETS.hero.alt}
+                src={LADA_DUO_ASSETS.hero.src}
+                data-webp-src={LADA_DUO_ASSETS.hero.webp}
+                alt={LADA_DUO_ASSETS.hero.alt}
                 fetchPriority="high"
                 decoding="async"
                 className="h-full w-full object-cover object-center"
@@ -163,7 +163,7 @@ export default function AuthPage() {
               <div className="inline-flex items-center gap-2 rounded-[6px] border border-[#E33337]/50 bg-[#0E1013]/85 px-2.5 py-1 backdrop-blur-sm">
                 <span className="h-2 w-2 rounded-full bg-[#E33337]" aria-hidden="true" />
                 <span className="font-display-num text-[11px] font-bold uppercase tracking-widest text-[#F3F4F4]">
-                  LADA GRANTA SPORT · ЛИЧНЫЙ КАБИНЕТ
+                  LADA GRANTA & VESTA · ЛИЧНЫЙ КАБИНЕТ
                 </span>
               </div>
               <h1 className="font-display-num mt-2.5 text-[28px] font-bold uppercase leading-tight tracking-wide text-[#F3F4F4] sm:text-[32px]">
@@ -175,14 +175,14 @@ export default function AuthPage() {
             </div>
           </div>
 
-          {/* Кадр 2: Крупный план шильдика SPORT на тёмной решётке радиатора (без наложения текста поверх шильдика) */}
+          {/* Кадр 2: Крупный план шильдиков GRANTA и VESTA (без наложения текста поверх шильдиков) */}
           <div className="mx-4 mt-3 overflow-hidden rounded-[10px] border border-[#363B43] bg-[#1A1D22] lg:mx-0 lg:mt-4">
             <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr]">
               <div className="h-24 w-full overflow-hidden bg-[#0E1013] sm:h-full">
                 <img
-                  src={GRANTA_ASSETS.detail.src}
-                  data-webp-src={GRANTA_ASSETS.detail.webp}
-                  alt={GRANTA_ASSETS.detail.alt}
+                  src={LADA_DUO_ASSETS.detail.src}
+                  data-webp-src={LADA_DUO_ASSETS.detail.webp}
+                  alt={LADA_DUO_ASSETS.detail.alt}
                   loading="lazy"
                   className="h-full w-full object-cover object-center"
                 />
@@ -457,7 +457,7 @@ export default function AuthPage() {
                   <ArrowUpRightIcon className="h-4 w-4 text-[#E33337]" />
                 </Button>
                 <p className="-mt-1 text-center text-[11.5px] leading-relaxed text-[#A9AFB7]">
-                  Демо-кабинет заполнен данными LADA Granta Sport и хранится только в этом
+                  Демо-кабинет заполнен данными LADA Granta и Vesta и хранится только в этом
                   браузере: кредит, расходы, журнал ТО и план обслуживания можно свободно менять.
                   Выход из демо вернёт обычный вход по email.
                 </p>

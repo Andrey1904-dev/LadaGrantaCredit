@@ -32,11 +32,11 @@ import {
   toDateInputValue,
 } from '../utils/format'
 import {
-  GRANTA_ASSETS,
+  LADA_DUO_ASSETS,
   PAGE_MEDIA,
-  getSavedFinish,
-  setSavedFinish,
-  type GrantaFinish,
+  getSavedModel,
+  setSavedModel,
+  type DuoModel,
 } from '../lib/assets'
 import PageHero, { HeroChip } from '../components/PageHero'
 import { Link } from 'react-router-dom'
@@ -51,7 +51,7 @@ import {
 } from '../lib/backup'
 import { confirmAction } from '../lib/telegram-mini-app'
 
-/** Вкладка 4: Гараж — паспорт LADA Granta Sport, выбор цвета кузова (визуал), ОСАГО и журнал ТО */
+/** Вкладка 4: Гараж — паспорт LADA Granta / Vesta, выбор модели владельца (визуал), ОСАГО и журнал ТО */
 export default function GaragePage() {
   const {
     car,
@@ -66,7 +66,7 @@ export default function GaragePage() {
   const [settings] = useSettings()
   const [carSheet, setCarSheet] = useState(false)
   const [serviceSheet, setServiceSheet] = useState(false)
-  const [finish, setFinish] = useState<GrantaFinish>(() => getSavedFinish())
+  const [model, setModel] = useState<DuoModel>(() => getSavedModel())
 
   // Короткая сводка регламента — журнал ТО и план обслуживания смотрят на одни и те же записи
   const servicePlan = useMemo(() => {
@@ -82,9 +82,9 @@ export default function GaragePage() {
   const serviceAttention = servicePlan.filter((s) => s.state !== 'ok')
   const nearestWork = serviceAttention[0] ?? servicePlan[0] ?? null
 
-  const handleFinishChange = (next: GrantaFinish) => {
-    setFinish(next)
-    setSavedFinish(next)
+  const handleModelChange = (next: DuoModel) => {
+    setModel(next)
+    setSavedModel(next)
   }
 
   if (loading) {
@@ -98,15 +98,15 @@ export default function GaragePage() {
   if (!car) {
     return (
       <EmptyState
-        showSportDetail
+        showDuoDetail
         icon={<CarIcon className="h-6 w-6" />}
         title="Автомобиль не добавлен"
-        text="Перейдите на главную страницу и заполните карточку вашей LADA Granta"
+        text="Перейдите на главную страницу и заполните карточку вашей LADA Granta или Vesta"
       />
     )
   }
 
-  const carAsset = finish === 'white' ? GRANTA_ASSETS.garageWhite : GRANTA_ASSETS.garageBlack
+  const carAsset = model === 'vesta' ? LADA_DUO_ASSETS.garageVesta : LADA_DUO_ASSETS.garageGranta
   const drivenKm = Math.max(0, car.current_mileage - (car.initial_mileage || 0))
 
   return (
@@ -115,7 +115,7 @@ export default function GaragePage() {
         <PageHero
           media={PAGE_MEDIA.garage}
           eyebrow="Паспорт автомобиля"
-          title="Мой гараж · Granta Sport"
+          title="Мой гараж · Granta & Vesta"
           subtitle="Номер, VIN, пробег, полис ОСАГО и полный журнал выполненных работ."
           priority
           action={
@@ -150,13 +150,13 @@ export default function GaragePage() {
         />
       </div>
 
-      {/* 2. Паспорт автомобиля и полноформатный кадр исполнения (черный / белый вариант) */}
+      {/* 2. Паспорт автомобиля и полноформатный кадр дуэта (ваша модель — в фокусе) */}
       <Card className="animate-rise mt-4 p-0 overflow-hidden" style={{ animationDelay: '220ms' }}>
-        {/* Верхняя панель выбора цвета кузова (явно отмечено как визуальное демо) */}
+        {/* Верхняя панель выбора модели владельца (явно отмечено как визуальное демо) */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#363B43] bg-[#23272D]/75 px-4 py-2.5">
           <div className="flex items-center gap-2">
             <span className="text-[11.5px] font-bold uppercase tracking-wider text-[#F3F4F4]">
-              Исполнение кузова
+              Ваша модель
             </span>
             <span className="rounded-[5px] border border-[#363B43] bg-[#0E1013] px-2 py-0.5 text-[10.5px] font-medium text-[#A9AFB7]">
               Визуальное демо
@@ -166,56 +166,57 @@ export default function GaragePage() {
           <div
             className="flex items-center gap-1.5"
             role="radiogroup"
-            aria-label="Выбор цвета автомобиля для визуализации"
+            aria-label="Выбор модели автомобиля для визуализации"
           >
             <button
               type="button"
               role="radio"
-              aria-checked={finish === 'black'}
-              onClick={() => handleFinishChange('black')}
+              aria-checked={model === 'granta'}
+              onClick={() => handleModelChange('granta')}
               className={`inline-flex min-h-[36px] items-center gap-2 rounded-[8px] border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
-                finish === 'black'
+                model === 'granta'
                   ? 'border-[#E33337] bg-[#0E1013] text-[#F3F4F4]'
                   : 'border-[#363B43] bg-[#1A1D22] text-[#A9AFB7] hover:text-[#F3F4F4]'
               }`}
             >
               <span className="h-3 w-3 rounded-full border border-[#A9AFB7]/60 bg-[#14171C]" />
-              Чёрный
+              Granta
             </button>
             <button
               type="button"
               role="radio"
-              aria-checked={finish === 'white'}
-              onClick={() => handleFinishChange('white')}
+              aria-checked={model === 'vesta'}
+              onClick={() => handleModelChange('vesta')}
               className={`inline-flex min-h-[36px] items-center gap-2 rounded-[8px] border px-2.5 py-1 text-[12px] font-semibold transition-colors ${
-                finish === 'white'
+                model === 'vesta'
                   ? 'border-[#E33337] bg-[#0E1013] text-[#F3F4F4]'
                   : 'border-[#363B43] bg-[#1A1D22] text-[#A9AFB7] hover:text-[#F3F4F4]'
               }`}
             >
               <span className="h-3 w-3 rounded-full border border-[#363B43] bg-[#F3F4F4]" />
-              Белый
+              Vesta
             </button>
           </div>
         </div>
 
-        {/* Полноформатный кадр выбранного исполнения на всю ширину:
-            машина целиком в родном гараже, кроссфейд при смене цвета */}
+        {/* Полноформатный кадр дуэта на всю ширину: обе машины целиком
+            в родном гараже, выбранная модель — в фокусе; кроссфейд при смене */}
         <div className="relative h-56 w-full overflow-hidden bg-[#0E1013] sm:h-80">
-          <img
-            key={finish}
-            src={carAsset.src}
-            data-webp-src={carAsset.webp}
-            alt={carAsset.alt}
-            loading="lazy"
-            className="animate-car-in h-full w-full object-cover object-center"
-          />
+          <div key={model} className="animate-car-in h-full w-full">
+            <img
+              src={carAsset.src}
+              data-webp-src={carAsset.webp}
+              alt={carAsset.alt}
+              loading="lazy"
+              className="animate-kenburns h-full w-full object-cover object-center"
+            />
+          </div>
           <div
             className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1A1D22]/75 via-transparent to-[#0E1013]/20"
             aria-hidden="true"
           />
           <span className="absolute right-3 top-3 rounded-[6px] border border-[#363B43] bg-[#0E1013]/80 px-2 py-0.5 font-mono text-[10.5px] font-semibold uppercase tracking-wider text-[#A9AFB7] backdrop-blur-sm">
-            {finish === 'white' ? 'Белый кузов' : 'Чёрный кузов'}
+            {model === 'vesta' ? 'В фокусе · Vesta' : 'В фокусе · Granta'}
           </span>
         </div>
 
@@ -281,7 +282,7 @@ export default function GaragePage() {
 
       {maintenance.length === 0 ? (
         <EmptyState
-          showSportDetail
+          showDuoDetail
           icon={<WrenchIcon className="h-6 w-6" />}
           title="Сервисный журнал пуст"
           text="Фиксируйте замену масла, свечей, фильтров и регламентные работы с пробегом — так проще планировать следующее ТО"
@@ -404,8 +405,8 @@ export default function GaragePage() {
         <div className="grid grid-cols-1 sm:grid-cols-[200px_1fr]">
           <div className="h-24 w-full overflow-hidden bg-[#0E1013] sm:h-full">
             <img
-              src={GRANTA_ASSETS.detail.src}
-              data-webp-src={GRANTA_ASSETS.detail.webp}
+              src={LADA_DUO_ASSETS.detail.src}
+              data-webp-src={LADA_DUO_ASSETS.detail.webp}
               alt=""
               loading="lazy"
               className="h-full w-full object-cover object-center"
