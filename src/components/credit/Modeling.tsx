@@ -5,6 +5,7 @@ import { fmtMoney, parseLocaleNumber, toDateInputValue } from '../../utils/forma
 import { CheckIcon } from '../icons'
 import {
   annuityPayment,
+  pdnRelief,
   principalFromPayment,
   rateFromPayment,
   termFromPayment,
@@ -329,6 +330,13 @@ function PdnCalculator() {
   const [thisPayment, setThisPayment] = useState(() =>
     loan ? String(Math.round(loan.monthly_payment)) : '26040',
   )
+  /** Параметры закрываемых кредитов — нужны, чтобы перевести «лишний» платёж в сумму долга */
+  const [closeRate, setCloseRate] = useState(() =>
+    loan ? String(loan.interest_rate) : '24.9',
+  )
+  const [closeTerm, setCloseTerm] = useState(() =>
+    loan ? String(loan.term_months) : '36',
+  )
 
   const inc = parseLocaleNumber(income)
   const other = Math.max(0, parseLocaleNumber(otherPayments) || 0)
@@ -346,6 +354,17 @@ function PdnCalculator() {
     if (pdn <= 50) return 'warn'
     return 'danger'
   }, [pdn])
+
+  /** Советы: сколько платежа убрать и какой долг закрыть ради ПДН 50% и 30% */
+  const relief = useMemo(() => {
+    const rate = Math.max(0, parseLocaleNumber(closeRate) || 0)
+    const term = Math.max(0, Math.round(parseLocaleNumber(closeTerm) || 0))
+    const base = { income: inc, totalMonthlyDebt: totalMonthlyDebt, annualPercent: rate, termLeft: term }
+    return {
+      safe: pdnRelief({ ...base, targetPercent: 30 }),
+      limit: pdnRelief({ ...base, targetPercent: 50 }),
+    }
+  }, [inc, totalMonthlyDebt, closeRate, closeTerm])
 
   const zoneConfig = {
     safe: {
@@ -491,6 +510,87 @@ function PdnCalculator() {
             </p>
           )}
         </div>
+
+        {/* Совет: на какую сумму закрыть кредиты, чтобы снизить нагрузку */}
+        {zone && (relief.safe || relief.limit) && (
+          <div className="mt-3 rounded-[10px] border border-[#363B43] bg-[#0E1013] p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <h4 className="font-display-num text-[13.5px] font-bold uppercase tracking-wide text-[#F3F4F4]">
+                Что закрыть, чтобы снизить ПДН
+              </h4>
+              <InfoTip title="Как считаем">
+                Сначала считаем, на сколько рублей нужно уменьшить суммарный ежемесячный платёж,
+                чтобы уложиться в порог. Затем переводим этот платёж в остаток долга по формуле
+                аннуитета — при указанных ниже ставке и остатке срока закрываемых кредитов.
+                Это оценка: точные суммы для досрочного погашения берите из справки банка.
+              </InfoTip>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2">
+              {(['limit', 'safe'] as const).map((key) => {
+                const r = relief[key]
+                if (!r) return null
+                const color = key === 'limit' ? '#F5A623' : '#16B374'
+                return (
+                  <div
+                    key={key}
+                    className="rounded-[8px] border px-3 py-2.5 text-[12.5px] leading-relaxed"
+                    style={{ borderColor: `${color}45`, backgroundColor: `${color}12` }}
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <span className="text-[11.5px] font-bold uppercase tracking-wider" style={{ color }}>
+                        Цель — ПДН до {r.targetPercent}%
+                      </span>
+                      <span className="font-mono text-[11.5px] text-[#A9AFB7]">
+                        предел платежей {fmtMoney(r.allowedPayment)}/мес
+                      </span>
+                    </div>
+                    {r.reached ? (
+                      <p className="mt-1 text-[#A9AFB7]">
+                        Порог уже соблюдён — запас{' '}
+                        <strong className="text-[#F3F4F4]">{fmtMoney(r.headroom)}</strong> в месяц до
+                        его превышения.
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-[#A9AFB7]">
+                        Снизьте ежемесячные платежи на{' '}
+                        <strong className="text-[#F3F4F4]">{fmtMoney(r.paymentToCut)}</strong> — это
+                        примерно{' '}
+                        <strong className="text-[#F3F4F4]">
+                          {Number.isFinite(r.principalToClose) ? fmtMoney(r.principalToClose) : '—'}
+                        </strong>{' '}
+                        остатка долга, который нужно погасить или закрыть досрочно.
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field
+                label="Ставка по закрываемым кредитам"
+                suffix="%"
+                inputMode="decimal"
+                placeholder="24,9"
+                value={closeRate}
+                onChange={(e) => setCloseRate(e.target.value)}
+              />
+              <Field
+                label="Остаток срока по ним"
+                suffix="мес"
+                inputMode="numeric"
+                placeholder="36"
+                value={closeTerm}
+                onChange={(e) => setCloseTerm(e.target.value)}
+              />
+            </div>
+            <p className="mt-2 text-[11.5px] leading-relaxed text-[#A9AFB7]">
+              Выгоднее закрывать самые дорогие и короткие долги — кредитные карты и микрозаймы:
+              они дают максимальное снижение платежа на каждый вложенный рубль.
+            </p>
+          </div>
+        )}
       </div>
     </Card>
   )

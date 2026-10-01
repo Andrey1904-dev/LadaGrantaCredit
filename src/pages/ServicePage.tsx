@@ -213,7 +213,7 @@ export default function ServicePage() {
         media={PAGE_MEDIA.service}
         eyebrow="Регламент LADA · опыт владельцев"
         title="Техническое обслуживание"
-        subtitle={`План собран автоматически по пробегу ${fmtMileage(car.current_mileage)} и мотору ${engine.short}. Журнал ТО уточняет даты — заполнять таблицы вручную не нужно.`}
+        subtitle={`План собран автоматически по пробегу ${fmtMileage(car.current_mileage)} и автомобилю ${engine.short}. Журнал ТО уточняет даты — заполнять таблицы вручную не нужно.`}
         priority
         chips={
           <>
@@ -397,7 +397,7 @@ export default function ServicePage() {
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Select
-              label="Двигатель"
+              label="Автомобиль и двигатель"
               value={settings.engine}
               onChange={(e) => updateSettings({ engine: e.target.value as EngineId })}
             >
@@ -415,7 +415,8 @@ export default function ServicePage() {
             />
           </div>
           <p className="rounded-[8px] border border-[#363B43] bg-[#0E1013]/60 px-3 py-2 text-[11.5px] leading-relaxed text-[#A9AFB7]">
-            <strong className="text-[#F3F4F4]">{engine.short}:</strong> {engine.note}
+            <strong className="text-[#F3F4F4]">{engine.short}</strong>{' '}
+            <span className="font-mono text-[11px] text-[#A9AFB7]">({engine.code})</span>: {engine.note}
           </p>
         </Card>
 
