@@ -6,7 +6,7 @@ import AppErrorBoundary from './components/AppErrorBoundary'
 import { enableWebpAssets } from './lib/assets'
 import { bootstrapTelegramMiniApp } from './lib/telegram-mini-app'
 
-// Кадры Granta хранятся и в JPEG/PNG, и в WebP — подставляем WebP там,
+// Кадры дуэта Granta + Vesta хранятся в JPEG и WebP — подставляем WebP там,
 // где браузер его поддерживает (визуально страница не меняется).
 enableWebpAssets()
 

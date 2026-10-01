@@ -9,6 +9,9 @@
   --color-muted: #a9afb7;
   --color-line: #363b43;
 
+  /* Дополнительный узкий брейкпоинт (разделители телеметрии на главной) */
+  --breakpoint-xs: 30rem;
+
   /* Акцент Granta Sport Red */
   --color-sport: #e33337;
   --color-sport-hover: #c82529;

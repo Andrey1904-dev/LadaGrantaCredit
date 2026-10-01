@@ -125,7 +125,12 @@ export function computeFuelStats(
 /** Средний пробег в месяц по чекам с одометром (нужен для прогноза даты ТО) */
 export function monthlyMileage(transactions: Transaction[]): number | null {
   const points = transactions
-    .filter((t) => typeof t.mileage_at_transaction === 'number' && t.mileage_at_transaction! > 0)
+    .filter(
+      (t) =>
+        typeof t.mileage_at_transaction === 'number' &&
+        t.mileage_at_transaction! > 0 &&
+        !Number.isNaN(new Date(t.date).getTime()),
+    )
     .sort((a, b) => a.date.localeCompare(b.date))
   if (points.length < 2) return null
   const first = points[0]
