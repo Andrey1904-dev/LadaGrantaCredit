@@ -186,3 +186,72 @@ export function simulatePrepayment(input: PrepaymentInput): PrepaymentPlan | nul
     lastPayment: last,
   }
 }
+
+/* ------------------------------------------------------------------ */
+/*  ПДН: сколько нужно закрыть, чтобы снизить нагрузку                 */
+/* ------------------------------------------------------------------ */
+
+export interface PdnReliefInput {
+  /** Среднемесячный доход, ₽ */
+  income: number
+  /** Сумма всех ежемесячных платежей по кредитам, ₽ */
+  totalMonthlyDebt: number
+  /** Целевой ПДН, % (пороги ЦБ: 30 и 50) */
+  targetPercent: number
+  /** Средняя годовая ставка по закрываемым кредитам, % (для оценки суммы) */
+  annualPercent?: number
+  /** Сколько платежей осталось по закрываемым кредитам */
+  termLeft?: number
+}
+
+export interface PdnRelief {
+  /** Целевой ПДН, % */
+  targetPercent: number
+  /** Максимально допустимый суммарный платёж при целевом ПДН, ₽/мес */
+  allowedPayment: number
+  /** На сколько нужно снизить суммарный платёж, ₽/мес (0 — цель уже достигнута) */
+  paymentToCut: number
+  /** Запас до цели, ₽/мес (0, если цель не достигнута) */
+  headroom: number
+  /** Цель уже выполнена? */
+  reached: boolean
+  /** Оценка остатка долга, который нужно погасить, ₽ (NaN, если данных мало) */
+  principalToClose: number
+}
+
+/**
+ * Совет по снижению ПДН: сколько рублей ежемесячного платежа нужно убрать
+ * и какой примерно остаток долга для этого придётся закрыть досрочно.
+ *
+ * Сумма закрытия оценивается как тело аннуитета, дающего «лишний» платёж
+ * при заданных ставке и остатке срока: S = P · ((1+r)^n − 1) / (r·(1+r)^n).
+ */
+export function pdnRelief(input: PdnReliefInput): PdnRelief | null {
+  const income = input.income
+  const debt = Math.max(0, input.totalMonthlyDebt)
+  const target = input.targetPercent
+  if (!(income > 0) || !(target > 0)) return null
+
+  const allowedPayment = (income * target) / 100
+  const paymentToCut = Math.max(0, debt - allowedPayment)
+  const reached = paymentToCut <= 0.005
+
+  let principalToClose = reached ? 0 : NaN
+  if (!reached) {
+    const rate = input.annualPercent ?? 0
+    const n = input.termLeft ?? 0
+    if (n > 0 && rate >= 0) {
+      const s = principalFromPayment(Math.min(paymentToCut, debt), rate, n)
+      if (Number.isFinite(s)) principalToClose = s
+    }
+  }
+
+  return {
+    targetPercent: target,
+    allowedPayment,
+    paymentToCut,
+    headroom: reached ? allowedPayment - debt : 0,
+    reached,
+    principalToClose,
+  }
+}

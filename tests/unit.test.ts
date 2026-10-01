@@ -7,6 +7,7 @@ import {
   principalFromPayment,
   rateFromPayment,
   remainingBalance,
+  pdnRelief,
   simulatePrepayment,
   termFromPayment,
 } from '../src/utils/loan'
@@ -90,6 +91,49 @@ describe('аннуитет', () => {
     const balance = remainingBalance(1_000, 12, 12, 1, 100)
     near(balance, 910, 0.001)
     assert.notEqual(balance, remainingBalance(1_000, 12, 12, 1))
+  })
+})
+
+/* ------------------------------------------------------------------ */
+describe('ПДН: сколько закрыть для снижения нагрузки', () => {
+  const base = { income: 100_000, totalMonthlyDebt: 60_000, annualPercent: 24, termLeft: 24 }
+
+  it('считает предел платежей и сумму снижения', () => {
+    const r = pdnRelief({ ...base, targetPercent: 50 })!
+    near(r.allowedPayment, 50_000, 0.01)
+    near(r.paymentToCut, 10_000, 0.01)
+    assert.equal(r.reached, false)
+  })
+
+  it('переводит лишний платёж в остаток долга по аннуитету', () => {
+    const r = pdnRelief({ ...base, targetPercent: 50 })!
+    near(r.principalToClose, principalFromPayment(10_000, 24, 24), 0.01)
+    assert.ok(r.principalToClose > 0)
+  })
+
+  it('более строгий порог требует закрыть больше', () => {
+    const soft = pdnRelief({ ...base, targetPercent: 50 })!
+    const hard = pdnRelief({ ...base, targetPercent: 30 })!
+    assert.ok(hard.paymentToCut > soft.paymentToCut)
+    assert.ok(hard.principalToClose > soft.principalToClose)
+  })
+
+  it('если порог соблюдён — показывает запас, а закрывать нечего', () => {
+    const r = pdnRelief({ ...base, totalMonthlyDebt: 20_000, targetPercent: 30 })!
+    assert.equal(r.reached, true)
+    assert.equal(r.paymentToCut, 0)
+    assert.equal(r.principalToClose, 0)
+    near(r.headroom, 10_000, 0.01)
+  })
+
+  it('без срока закрываемых кредитов сумма не оценивается', () => {
+    const r = pdnRelief({ ...base, termLeft: 0, targetPercent: 50 })!
+    near(r.paymentToCut, 10_000, 0.01)
+    assert.ok(Number.isNaN(r.principalToClose))
+  })
+
+  it('без дохода расчёт невозможен', () => {
+    assert.equal(pdnRelief({ ...base, income: 0, targetPercent: 50 }), null)
   })
 })
 
