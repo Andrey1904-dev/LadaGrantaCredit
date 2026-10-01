@@ -26,8 +26,16 @@ export type EngineId = '11182' | '11186' | '21127' | '21127-95' | '21129' | '211
 
 export interface EngineInfo {
   id: EngineId
+  /** Модель автомобиля — то, что видит владелец вместо индекса мотора */
+  car: string
+  /** Полное название для списков: «LADA Granta · 1.6 16V · 106 л.с.» */
   label: string
+  /** Короткое название для подписей: «LADA Granta 1.6 16V» */
   short: string
+  /** Заводской индекс двигателя — только как техническая справка */
+  code: string
+  /** Рабочий объём, л */
+  displacement: '1.6' | '1.8'
   valves: 8 | 16
   power: number
   /** Гнёт ли клапана при обрыве ремня ГРМ */
@@ -38,8 +46,11 @@ export interface EngineInfo {
 export const ENGINES: EngineInfo[] = [
   {
     id: '11182',
-    label: 'ВАЗ-11182 · 1.6 8V · 90 л.с.',
-    short: '1.6 8V (11182)',
+    car: 'LADA Granta',
+    label: 'LADA Granta · 1.6 8V · 90 л.с.',
+    short: 'LADA Granta 1.6 8V',
+    code: 'ВАЗ-11182',
+    displacement: '1.6',
     valves: 8,
     power: 90,
     bendsValves: true,
@@ -47,8 +58,11 @@ export const ENGINES: EngineInfo[] = [
   },
   {
     id: '11186',
-    label: 'ВАЗ-11186 · 1.6 8V · 87 л.с.',
-    short: '1.6 8V (11186)',
+    car: 'LADA Granta',
+    label: 'LADA Granta · 1.6 8V · 87 л.с.',
+    short: 'LADA Granta 1.6 8V',
+    code: 'ВАЗ-11186',
+    displacement: '1.6',
     valves: 8,
     power: 87,
     bendsValves: true,
@@ -56,8 +70,11 @@ export const ENGINES: EngineInfo[] = [
   },
   {
     id: '21127',
-    label: 'ВАЗ-21127 · 1.6 16V · 106 л.с.',
-    short: '1.6 16V (21127)',
+    car: 'LADA Granta',
+    label: 'LADA Granta · 1.6 16V · 106 л.с.',
+    short: 'LADA Granta 1.6 16V',
+    code: 'ВАЗ-21127',
+    displacement: '1.6',
     valves: 16,
     power: 106,
     bendsValves: true,
@@ -65,8 +82,11 @@ export const ENGINES: EngineInfo[] = [
   },
   {
     id: '21127-95',
-    label: 'ВАЗ-21127-95 · 1.6 16V · 118 л.с. (Sport)',
-    short: '1.6 16V Sport (21127-95)',
+    car: 'LADA Granta Sport',
+    label: 'LADA Granta Sport · 1.6 16V · 118 л.с.',
+    short: 'LADA Granta Sport 1.6 16V',
+    code: 'ВАЗ-21127-95',
+    displacement: '1.6',
     valves: 16,
     power: 118,
     bendsValves: true,
@@ -74,8 +94,11 @@ export const ENGINES: EngineInfo[] = [
   },
   {
     id: '21129',
-    label: 'ВАЗ-21129 · 1.6 16V · 106 л.с.',
-    short: '1.6 16V (21129)',
+    car: 'LADA Vesta',
+    label: 'LADA Vesta · 1.6 16V · 106 л.с.',
+    short: 'LADA Vesta 1.6 16V',
+    code: 'ВАЗ-21129',
+    displacement: '1.6',
     valves: 16,
     power: 106,
     bendsValves: true,
@@ -83,17 +106,29 @@ export const ENGINES: EngineInfo[] = [
   },
   {
     id: '21179',
-    label: 'ВАЗ-21179 · 1.8 16V · 122 л.с.',
-    short: '1.8 16V (21179)',
+    car: 'LADA Vesta',
+    label: 'LADA Vesta · 1.8 16V · 122 л.с.',
+    short: 'LADA Vesta 1.8 16V',
+    code: 'ВАЗ-21179',
+    displacement: '1.8',
     valves: 16,
     power: 122,
     bendsValves: true,
-    note: 'Мотор Granta Drive Active / Sport: чувствителен к качеству масла и перегреву.',
+    note: 'Мотор Vesta Sport, Vesta Cross и XRAY: чувствителен к качеству масла и перегреву.',
   },
 ]
 
 export const engineInfo = (id: EngineId): EngineInfo =>
   ENGINES.find((e) => e.id === id) ?? ENGINES[2]
+
+/** Название автомобиля для интерфейса: «LADA Granta» вместо индекса «21127» */
+export const engineCarName = (id: EngineId): string => engineInfo(id).car
+
+/** Техническая строка мотора без модели: «1.6 16V · 106 л.с. · ВАЗ-21127» */
+export const engineSpecLine = (id: EngineId): string => {
+  const e = engineInfo(id)
+  return `${e.displacement} ${e.valves}V · ${e.power} л.с. · ${e.code}`
+}
 
 /* ------------------------------------------------------------------ */
 /*  Каталог регламентных работ                                         */

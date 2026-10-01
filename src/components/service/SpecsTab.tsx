@@ -1,7 +1,7 @@
 import { Card, SectionTitle } from '../ui'
 import { DropletIcon, InfoIcon, SparklesIcon, TyreIcon } from '../icons'
 import { FLUID_SPECS, SPORT_SPECS, WHEEL_SPECS, fuelGrade, type SpecRow } from '../../lib/ownership'
-import { engineInfo, type EngineId } from '../../lib/service'
+import { engineInfo, engineSpecLine, type EngineId } from '../../lib/service'
 
 function SpecList({ rows }: { rows: SpecRow[] }) {
   return (
@@ -38,11 +38,12 @@ export default function SpecsTab({ engine }: { engine: EngineId }) {
           </span>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-[#A9AFB7]">
-              Ваш двигатель
+              Ваш автомобиль
             </p>
             <p className="font-display-num text-[16px] font-bold leading-tight text-[#F3F4F4]">
-              {info.label}
+              {info.car}
             </p>
+            <p className="mt-0.5 text-[12px] text-[#A9AFB7]">Двигатель {engineSpecLine(engine)}</p>
             <p className="mt-1 text-[11.5px] leading-relaxed text-[#A9AFB7]">{info.note}</p>
           </div>
         </div>

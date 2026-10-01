@@ -16,11 +16,14 @@ import { parseLocaleNumber, plural, pluralMonths, toDateInputValue } from '../sr
 import { computeFuelStats, monthlyMileage } from '../src/utils/fuel'
 import { forecastYear, monthlySeries, ownershipCost } from '../src/utils/stats'
 import {
+  ENGINES,
   SERVICE_ITEMS,
   buildMileagePlan,
   buildServicePlan,
   computeServiceStatus,
+  engineCarName,
   engineInfo,
+  engineSpecLine,
   recordMatches,
   intervalFor,
 } from '../src/lib/service'
@@ -452,6 +455,27 @@ describe('регламент ТО', () => {
       assert.ok(item.factory.km || item.factory.months, `нет интервала: ${item.id}`)
     }
     assert.equal(engineInfo('21179').power, 122)
+  })
+
+  it('двигатели подписаны названием машины, а не индексом', () => {
+    for (const e of ENGINES) {
+      assert.ok(e.car.startsWith('LADA '), `нет модели: ${e.id}`)
+      assert.ok(e.label.startsWith(e.car), `label без модели: ${e.id}`)
+      assert.ok(e.short.startsWith(e.car), `short без модели: ${e.id}`)
+      assert.ok(!/\d{5}/.test(e.car), `в названии машины остался индекс: ${e.id}`)
+      assert.ok(!/\d{5}/.test(e.label), `в label остался индекс: ${e.id}`)
+      assert.ok(!/\d{5}/.test(e.short), `в short остался индекс: ${e.id}`)
+      assert.ok(e.code.startsWith('ВАЗ-'), `нет индекса мотора: ${e.id}`)
+    }
+  })
+
+  it('Granta и Vesta разводятся по моторам, индекс остаётся в справке', () => {
+    assert.equal(engineCarName('21127'), 'LADA Granta')
+    assert.equal(engineCarName('21127-95'), 'LADA Granta Sport')
+    assert.equal(engineCarName('21129'), 'LADA Vesta')
+    assert.equal(engineCarName('21179'), 'LADA Vesta')
+    assert.equal(engineSpecLine('21127'), '1.6 16V · 106 л.с. · ВАЗ-21127')
+    assert.equal(engineSpecLine('21179'), '1.8 16V · 122 л.с. · ВАЗ-21179')
   })
 })
 
