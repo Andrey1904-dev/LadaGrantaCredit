@@ -41,7 +41,7 @@ export default function PageHero({
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : 'auto'}
           decoding="async"
-          className="h-full w-full object-cover object-center"
+          className="animate-kenburns h-full w-full object-cover object-center"
         />
         {/* Градиент под текст: не перекрывает автомобиль плашкой */}
         <div

@@ -202,14 +202,15 @@ export default function GaragePage() {
         {/* Полноформатный кадр дуэта на всю ширину: обе машины целиком
             в родном гараже, выбранная модель — в фокусе; кроссфейд при смене */}
         <div className="relative h-56 w-full overflow-hidden bg-[#0E1013] sm:h-80">
-          <img
-            key={model}
-            src={carAsset.src}
-            data-webp-src={carAsset.webp}
-            alt={carAsset.alt}
-            loading="lazy"
-            className="animate-car-in h-full w-full object-cover object-center"
-          />
+          <div key={model} className="animate-car-in h-full w-full">
+            <img
+              src={carAsset.src}
+              data-webp-src={carAsset.webp}
+              alt={carAsset.alt}
+              loading="lazy"
+              className="animate-kenburns h-full w-full object-cover object-center"
+            />
+          </div>
           <div
             className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#1A1D22]/75 via-transparent to-[#0E1013]/20"
             aria-hidden="true"

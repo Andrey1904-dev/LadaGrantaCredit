@@ -75,7 +75,7 @@ export default function CreditPage() {
         ]}
       />
 
-      <div>
+      <div key={tab} className="animate-pop-in">
         {tab === 'schedule' && <MySchedule />}
         {tab === 'prepay' && <Prepayment />}
         {tab === 'modeling' && <Modeling />}

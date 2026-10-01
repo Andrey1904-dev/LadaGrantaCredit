@@ -42,6 +42,7 @@ import {
   type DuoModel,
 } from '../lib/assets'
 import { useSettings } from '../lib/settings'
+import { useCountUp } from '../lib/useCountUp'
 import { buildServicePlan, STATE_META } from '../lib/service'
 import { computeFuelStats, monthlyMileage } from '../utils/fuel'
 import type { TxCategory } from '../types/domain'
@@ -116,6 +117,10 @@ export default function DashboardPage() {
     [transactions, settings.fuelPrice, settings.tankLiters],
   )
   const kmPerMonth = useMemo(() => monthlyMileage(transactions), [transactions])
+
+  /* Живые цифры: одометр и траты месяца «докручиваются» при появлении */
+  const shownMileage = useCountUp(car?.current_mileage ?? 0)
+  const shownMonthSpent = useCountUp(monthSpent)
 
   const insuranceAlert = useMemo(() => {
     if (!car?.insurance_until) return null
@@ -230,14 +235,20 @@ export default function DashboardPage() {
         {/* Полноформатная сцена дуэта на всю ширину карточки: обе машины целиком,
             без белых полей и «игрушечного» подиума; кроссфейд при смене сцены/модели */}
         <div className="relative h-56 w-full overflow-hidden bg-[#0E1013] sm:h-80">
-          <img
-            key={`${photoMode}-${model}`}
-            src={sceneAsset.src}
-            data-webp-src={sceneAsset.webp}
-            alt={sceneAsset.alt}
-            fetchPriority="high"
-            decoding="async"
-            className="animate-car-in h-full w-full object-cover object-center"
+          <div key={`${photoMode}-${model}`} className="animate-car-in h-full w-full">
+            <img
+              src={sceneAsset.src}
+              data-webp-src={sceneAsset.webp}
+              alt={sceneAsset.alt}
+              fetchPriority="high"
+              decoding="async"
+              className="animate-kenburns h-full w-full object-cover object-center"
+            />
+          </div>
+          {/* Бегущий блик — фирменный штрих спортивной линейки */}
+          <div
+            aria-hidden="true"
+            className="animate-sheen pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/5 to-transparent"
           />
           {/* Мягкое затемнение снизу, чтобы сцена вливалась в карточку */}
           <div
@@ -266,7 +277,7 @@ export default function DashboardPage() {
                 Показания одометра
               </p>
               <p className="font-display-num text-[28px] font-bold leading-tight text-[#F3F4F4]">
-                {fmtMileage(car.current_mileage)}
+                {fmtMileage(Math.round(shownMileage))}
               </p>
             </div>
           </div>
@@ -301,7 +312,7 @@ export default function DashboardPage() {
         className="animate-rise grid grid-cols-1 gap-2.5 sm:grid-cols-3"
         style={{ animationDelay: '130ms' }}
       >
-        <Link to="/service" className="group">
+        <Link to="/service" className="group hover-lift rounded-[10px]">
           <Card className="flex h-full flex-col justify-between border-[#363B43] transition-colors group-hover:border-[#E33337]/70">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -335,7 +346,7 @@ export default function DashboardPage() {
             {nextService && (
               <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#0E1013]">
                 <div
-                  className="h-full rounded-full"
+                  className="animate-bar h-full rounded-full"
                   style={{
                     width: `${Math.min(100, Math.max(3, nextService.progress * 100))}%`,
                     backgroundColor: STATE_META[nextService.state].color,
@@ -346,7 +357,7 @@ export default function DashboardPage() {
           </Card>
         </Link>
 
-        <Link to="/expenses" className="group">
+        <Link to="/expenses" className="group hover-lift rounded-[10px]">
           <Card className="flex h-full flex-col justify-between border-[#363B43] transition-colors group-hover:border-[#E33337]/70">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -479,7 +490,7 @@ export default function DashboardPage() {
           </SectionTitle>
 
           {loan && loanStats ? (
-            <Link to="/credit" className="group flex-1">
+            <Link to="/credit" className="group hover-lift flex-1 rounded-[10px]">
               <Card className="relative flex h-full flex-col justify-between overflow-hidden border-[#363B43] bg-gradient-to-br from-[#23272D] to-[#1A1D22] transition-colors group-hover:border-[#E33337]/70">
                 <span
                   className="absolute inset-y-0 left-0 w-1 bg-[#E33337]"
@@ -512,7 +523,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#0E1013]">
                     <div
-                      className="h-full rounded-full bg-[#E33337]"
+                      className="animate-bar h-full rounded-full bg-[#E33337]"
                       style={{
                         width: `${Math.min(100, Math.max(3, loanStats.progress * 100))}%`,
                       }}
@@ -559,7 +570,7 @@ export default function DashboardPage() {
                     Потрачено с начала месяца
                   </p>
                   <p className="font-display-num mt-1 text-[30px] font-bold leading-none text-[#F3F4F4]">
-                    {fmtMoney(monthSpent)}
+                    {fmtMoney(shownMonthSpent)}
                   </p>
                 </div>
                 <Link to="/expenses">

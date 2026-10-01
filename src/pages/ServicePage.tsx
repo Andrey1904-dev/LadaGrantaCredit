@@ -238,6 +238,7 @@ export default function ServicePage() {
       {/* Вкладки раздела: длинный экран разбит на смысловые части */}
       <SegmentedControl options={SERVICE_TABS} value={tab} onChange={setTab} />
 
+      <div key={tab} className="animate-pop-in">
       {tab === 'docs' && (
         <>
         {/* Документы и платежи: ОСАГО, диагностическая карта, права, шины, налог */}
@@ -655,6 +656,8 @@ export default function ServicePage() {
         </>
       )}
 
+      </div>
+
       {/* Sheet: отметка выполненной работы */}
       <MarkDoneSheet
         status={doneItem}
@@ -811,7 +814,7 @@ function ProgressBar({ status }: { status: ServiceStatus }) {
   return (
     <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[#0E1013]">
       <div
-        className="h-full rounded-full transition-all duration-300"
+        className="animate-bar h-full rounded-full transition-all duration-300"
         style={{
           width: `${Math.min(100, Math.max(3, status.progress * 100))}%`,
           backgroundColor: meta.color,

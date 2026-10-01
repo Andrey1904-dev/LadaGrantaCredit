@@ -12,6 +12,7 @@ import {
   toDateInputValue,
 } from '../../utils/format'
 import { annuityPayment, remainingBalance } from '../../utils/loan'
+import { useCountUp } from '../../lib/useCountUp'
 import type { Loan } from '../../types/domain'
 import { confirmAction } from '../../lib/telegram-mini-app'
 
@@ -56,6 +57,9 @@ export default function MySchedule() {
       dueNow: paidCount <= elapsed,
     }
   }, [loan, payments])
+
+  /* Хук выше ранних return: остаток долга «докручивается» при появлении */
+  const shownRemaining = useCountUp(stats?.remaining ?? 0)
 
   const markPayment = async () => {
     if (!loan) return
@@ -113,7 +117,7 @@ export default function MySchedule() {
               Остаток основного долга
             </p>
             <p className="font-display-num mt-1 text-[34px] font-bold leading-none text-[#F3F4F4] sm:text-[38px]">
-              {fmtMoney(s.remaining)}
+              {fmtMoney(shownRemaining)}
             </p>
           </div>
           <div className="rounded-[8px] border border-[#363B43] bg-[#0E1013]/70 px-3 py-1.5 text-right">
@@ -143,7 +147,7 @@ export default function MySchedule() {
           </div>
           <div className="mt-2 h-2.5 overflow-hidden rounded-full border border-[#363B43] bg-[#0E1013]">
             <div
-              className="h-full rounded-full bg-[#E33337] transition-all duration-240"
+              className="animate-bar h-full rounded-full bg-[#E33337] transition-all duration-240"
               style={{ width: `${Math.min(100, Math.max(2, s.progress * 100))}%` }}
             />
           </div>
