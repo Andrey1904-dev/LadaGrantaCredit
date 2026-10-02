@@ -6,11 +6,9 @@ import {
   FileText,
   IdCard,
   ArrowUpRight,
-  Battery,
   Bell,
   Bot,
   Calendar,
-  ChevronDown,
   ClipboardList,
   Clock,
   Disc3,
@@ -24,9 +22,7 @@ import {
   Gauge,
   Info,
   LayoutDashboard,
-  Lock,
   LogOut,
-  Mail,
   MoreHorizontal,
   Pencil,
   Percent,
@@ -37,7 +33,6 @@ import {
   Snowflake,
   Sparkles,
   Sun,
-  Timer,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -150,20 +145,8 @@ export const SparklesIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconPr
   <Sparkles className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
 )
 
-export const MailIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
-  <Mail className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
-)
-
-export const LockIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
-  <Lock className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
-)
-
 export const DropletIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
   <Droplet className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
-)
-
-export const TimerIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
-  <Timer className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
 )
 
 export const ClockIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
@@ -182,10 +165,6 @@ export const SunIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) 
   <Sun className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
 )
 
-export const BatteryIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
-  <Battery className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
-)
-
 export const TyreIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
   <Disc3 className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
 )
@@ -196,10 +175,6 @@ export const TrendIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps
 
 export const SettingsIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
   <Settings2 className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
-)
-
-export const ChevronDownIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
-  <ChevronDown className={base(className)} strokeWidth={strokeWidth} aria-hidden="true" />
 )
 
 export const BellIcon = ({ className, strokeWidth = DEFAULT_STROKE }: IconProps) => (
