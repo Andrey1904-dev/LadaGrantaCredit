@@ -138,6 +138,7 @@ export default function ExpensesPage() {
       <div className="mb-4">
         <PageHero
           media={PAGE_MEDIA.expenses}
+          layout="split"
           eyebrow="Стоимость владения"
           title="Расходы и аналитика"
           subtitle="Структура трат по категориям, стоимость километра и реальный расход топлива по чекам заправок."
